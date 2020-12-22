@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
@@ -11,6 +12,8 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
+
+var rooms []room
 
 func homePage(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, "Home Page")
@@ -56,8 +59,44 @@ func reader(conn *websocket.Conn) {
 			log.Println(err)
 			return
 		}
+		var message message
 
+		err = json.Unmarshal(p, &message)
+		if err != nil {
+			log.Println(err)
+			return
+		}
+		if message.Action == "new-room" {
+			if len(rooms) > 0 {
+				rooms = append(rooms, room{len(rooms) + 1})
+			} else {
+				rooms = append(rooms, room{1})
+			}
+			fmt.Println(rooms)
+		}
+		if message.Action == "join-room" {
+
+			if len(rooms) > 0 {
+				rooms = append(rooms, room{len(rooms) + 1})
+			} else {
+				rooms = append(rooms, room{1})
+			}
+			fmt.Println(rooms)
+		}
 	}
+}
+
+type message struct {
+	Action string `json:"action"`
+}
+
+type room struct {
+	id     int
+	player []player
+}
+
+type player struct {
+	name string
 }
 
 func main() {

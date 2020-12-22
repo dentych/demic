@@ -1,6 +1,9 @@
 <template>
   <h1>WebSocket example</h1>
-  <p>{{ greeting }}</p>
+  <button type="button" @click="newRoom"> new room</button>
+  <input type="number" :roomnumber = placeholder="enter roomnumber">
+  <input type="text" placeholder="enter playername">
+  <button type="button" @click="joinRoom"> join room</button>
 </template>
 
 <script>
@@ -13,19 +16,31 @@ export default {
     }
   },
   mounted() {
-    this.socket = new WebSocket("ws://localhost:8081/ws")
+  },
+  methods:{
+    newRoom(){
+      this.socket = new WebSocket("ws://localhost:8081/ws")
 
-    this.socket.addEventListener("open", (event) => {
-      this.socket.send("hello backend")
-    })
+      this.socket.addEventListener("open", (event) => {
+        this.socket.send(JSON.stringify({action: "new-room"}))
+      })
 
-    this.socket.addEventListener("message", (event) => {
-      console.log("Received message: ", event.data)
-    })
+      this.socket.addEventListener("message", (event) => {
+        console.log("Received message: ", event.data)
+      })
+    },
+    joinRoom(){
+      this.socket = new WebSocket("ws://localhost:8081/ws")
+
+      this.socket.addEventListener("open", (event) => {
+        this.socket.send(JSON.stringify({action: "join-room",id: "",}))
+      })
+
+      this.socket.addEventListener("message", (event) => {
+        console.log("Received message: ", event.data)
+      })
+    }
   }
+
 }
 </script>
-
-<style scoped>
-
-</style>
