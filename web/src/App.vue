@@ -8,17 +8,18 @@ export default {
   name: "App",
   data() {
     return {
-      greeting: "Hello, world!"
+      greeting: "Hello, world!",
+      socket: null
     }
   },
   mounted() {
-    this.socket = new WebSocket("ws://localhost:8081")
+    this.socket = new WebSocket("ws://localhost:8081/ws")
 
-    this.socket.addEventListener("open", function (event) {
+    this.socket.addEventListener("open", (event) => {
       this.socket.send("hello backend")
     })
 
-    this.socket.addEventListener("message", function (event) {
+    this.socket.addEventListener("message", (event) => {
       console.log("Received message: ", event.data)
     })
   }
