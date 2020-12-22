@@ -24,7 +24,7 @@ export default {
       this.socket = new WebSocket("ws://localhost:8081/ws")
 
       this.socket.addEventListener("open", (event) => {
-        this.socket.send(JSON.stringify({action: "new-room", id: this.roomNumber, name: this.playerName}))
+        this.socket.send(JSON.stringify({action: "new-room"}))
       })
 
       this.socket.addEventListener("message", (event) => {
@@ -36,7 +36,7 @@ export default {
       this.socket = new WebSocket("ws://localhost:8081/ws")
 
       this.socket.addEventListener("open", (event) => {
-        this.socket.send(JSON.stringify({action: "join-room",id: "",}))
+        this.socket.send(JSON.stringify({action: "join-room", id: this.roomNumber, name: this.playerName}))
       })
 
       this.socket.addEventListener("message", (event) => {
