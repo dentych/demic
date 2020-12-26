@@ -3,12 +3,13 @@ package room
 import (
 	"log"
 	"math/rand"
+	"time"
 )
 
-////adds time to generate unique randomness
-//func init() {
-//	rand.Seed(time.Now().UnixNano())
-//}
+//adds time to generate unique randomness
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 //generates a random roomID
 func generateRoomID(n int) string {
