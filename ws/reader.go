@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"gitlab.com/dentych/demic/pakage/pyramid"
-	"gitlab.com/dentych/demic/pakage/room"
+	"gitlab.com/dentych/demic/room"
 	"log"
 	"strconv"
 )
