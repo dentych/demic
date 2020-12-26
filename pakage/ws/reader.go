@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
-	"gitlab/dentych/demic/pakage/pyramid"
-	"gitlab/dentych/demic/pakage/room"
+	"gitlab.com/dentych/demic/pakage/pyramid"
+	"gitlab.com/dentych/demic/pakage/room"
 	"log"
 	"strconv"
 )

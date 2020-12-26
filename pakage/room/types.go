@@ -1,6 +1,6 @@
 package room
 
-import "gitlab/dentych/demic/pakage/cardDeck"
+import "gitlab.com/dentych/demic/pakage/cardDeck"
 
 //Room holds the players for the game
 type Room struct {

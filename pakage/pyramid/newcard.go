@@ -1,8 +1,8 @@
 package pyramid
 
 import (
-	"gitlab/dentych/demic/pakage/cardDeck"
-	"gitlab/dentych/demic/pakage/room"
+	"gitlab.com/dentych/demic/pakage/cardDeck"
+	"gitlab.com/dentych/demic/pakage/room"
 	"log"
 )
 

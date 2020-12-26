@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"gitlab/dentych/demic/pakage/ws"
+	"gitlab.com/dentych/demic/pakage/ws"
 	"log"
 	"net/http"
 )

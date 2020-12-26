@@ -1,6 +1,6 @@
 package room
 
-import "gitlab/dentych/demic/pakage/cardDeck"
+import "gitlab.com/dentych/demic/pakage/cardDeck"
 
 //adds 1 cardDeck.Card to cardDeck.Deck and Shuffles the deck
 func AddCardToDeck(roomID string, card cardDeck.Card) {
