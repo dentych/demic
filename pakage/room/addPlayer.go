@@ -2,13 +2,14 @@ package room
 
 import "log"
 
-func AddPlayerToRoom(playerName string, roomID string) {
+//add Player to Room
+func AddPlayerToRoom(roomID string, playerName string) {
 	element, exist := Rooms[roomID]
 	if exist {
 		element.Players[playerName] = &Player{}
 		Rooms[roomID] = element
-		log.Println(playerName, "joined room ID:", roomID)
+		log.Println("Room", roomID, ":", playerName, "Joined the room")
 	} else {
-		log.Println("Room", roomID, "pla", playerName, "not found")
+		log.Println("Room", roomID, ": RoomID not found")
 	}
 }

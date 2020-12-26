@@ -5,7 +5,13 @@ import (
 	"math/rand"
 )
 
-func randSeq(n int) string {
+////adds time to generate unique randomness
+//func init() {
+//	rand.Seed(time.Now().UnixNano())
+//}
+
+//generates a random roomID
+func generateRoomID(n int) string {
 	var letters = []rune("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	id := make([]rune, n)
 	for i := range id {
@@ -14,18 +20,17 @@ func randSeq(n int) string {
 	return string(id)
 }
 
+//Creates a Room with a unique roomID in Rooms
 func CreateRoom() string {
 	for {
-		roomID := randSeq(4)
+		roomID := generateRoomID(4)
 		element, exist := Rooms[roomID]
 		if !exist {
 			element = Room{}
 			element.Players = make(map[string]*Player)
 			Rooms[roomID] = element
-			log.Println("Room", roomID, "created")
+			log.Println("Room", roomID, ": Created")
 			return roomID
-		} else {
-			log.Println("Room", roomID, "already exists")
 		}
 	}
 }
