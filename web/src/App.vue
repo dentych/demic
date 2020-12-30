@@ -77,7 +77,7 @@ export default {
       this.socket = new WebSocket("ws://localhost:8081/ws")
 
       this.socket.addEventListener("open", (event) => {
-        this.socket.send(JSON.stringify({action: "end-game", room: this.roomNumber}))
+        this.socket.send(JSON.stringify({action: "end-game", rgoom: this.roomNumber}))
       })
 
       this.socket.addEventListener("message", (event) => {
