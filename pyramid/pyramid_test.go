@@ -1,15 +1,18 @@
 package pyramid
 
 import (
+	"fmt"
+	"log"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPyramidIdValid(t *testing.T) {
 	pyramid := NewPyramidGame()
 
 	validChars := "ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890"
-	for _, v := range pyramid.RoomId {
+	for _, v := range pyramid.roomId {
 		if !strings.ContainsRune(validChars, v) {
 			t.Errorf("Invalid pyramid room ID char: %c\n", v)
 		}
@@ -23,7 +26,7 @@ func TestPyramid_AddPlayer(t *testing.T) {
 	_ = pyramid.AddPlayer(player)
 
 	result := false
-	for _, v := range pyramid.Players {
+	for _, v := range pyramid.players {
 		if v.Name == player.Name {
 			result = true
 			break
@@ -35,6 +38,30 @@ func TestPyramid_AddPlayer(t *testing.T) {
 	}
 }
 
-func TestPyramid_DealCards(t *testing.T) {
+func TestPyramidGame(t *testing.T) {
+	p := NewPyramidGame()
 
+	p1 := NewPlayer("Dennis")
+	p2 := NewPlayer("Noer")
+	err := p.AddPlayer(p1)
+	if err != nil {
+		log.Panic(err)
+	}
+	err = p.AddPlayer(p2)
+	if err != nil {
+		log.Panic(err)
+	}
+
+	go func() {
+		for {
+			fmt.Println("OUTPUT: " + <-p.Output)
+		}
+	}()
+	go p.Play()
+
+	timer := time.NewTimer(1 * time.Second)
+	<-timer.C
+	p.Input <- "ATTACK " + p1.Name + " " + p2.Name
+
+	for {}
 }

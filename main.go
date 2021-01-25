@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Application Started")
+	fmt.Println("Application started")
 	ws.SetupRoutes()
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }

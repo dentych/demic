@@ -13,5 +13,5 @@ type Player struct {
 func NewPlayer(name string) *Player {
 	p := Player{}
 	p.Name = name
-	return &Player{}
+	return &p
 }
