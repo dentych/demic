@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gitlab.com/dentych/demic/card"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,6 +34,8 @@ type Pyramid struct {
 type Attack struct {
 	Attacker Player
 	Target   Player
+	Accepted bool
+	Dmg      int
 }
 
 func NewPyramidGame() *Pyramid {
@@ -120,11 +123,17 @@ func (p *Pyramid) waitForContinue() {
 	}
 }
 
-func (p *Pyramid) attack(attacker, attackee Player) {
-	p.Output <- attacker.Name + " ATTACKS " + attackee.Name
+func (p *Pyramid) attack(attacker, attackee *Player, dmg int) {
+	p.Output <- attacker.Name + " ATTACKS " + attackee.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
+}
+
+func (p *Pyramid) acceptAttack(attacker, attackee *Player, dmg int) {
+	p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
+	attackee.Sips += dmg
 }
 
 func (p *Pyramid) inputHandler() {
+	//Forslag til struktur: Input = [roomid, acting player, action, message]
 	for {
 		event := <-p.Input
 		s := strings.Split(event, " ")
@@ -132,17 +141,61 @@ func (p *Pyramid) inputHandler() {
 			fmt.Println("MESSAGE NOT UNDERSTOOD: " + event)
 			continue
 		}
-
-		switch s[0] {
+		switch s[2] {
+		//Forslag til struktur: Input = [roomid, acting player, action = "ATTACK", target, dmg]
 		case "ATTACK":
-			if len(s) < 3 {
+			if len(s) < 4 {
 				fmt.Println("SHIT ATTACK MESSAGE: " + event)
 				continue
 			}
 			if !p.attackState {
 				p.Output <- "ATTACKING FAILED, NOT IN ATTACKING STATE"
 			} else {
+				var attackingPlayer, targetPlayer *Player
 				p.Output <- "ATTACKING " + s[1] + " " + s[2]
+				for k := range p.players {
+					switch p.players[k].Name {
+					case s[1]:
+						attackingPlayer = &p.players[k]
+					case s[3]:
+						targetPlayer = &p.players[k]
+					}
+				}
+				k, _ := strconv.Atoi(s[4])
+				p.attack(attackingPlayer, targetPlayer, k)
+			}
+		//Forslag til struktur: Input = [roomid, acting player, action = "ATTACK", target, dmg]
+		case "ACCEPT_ATTACK":
+			if len(s) < 3 {
+				fmt.Println("SHIT ACCEPT_ATTACK MESSAGE: " + event)
+				continue
+			}
+			if !p.attackState {
+				p.Output <- "ACCEPT_ATTACK FAILED, NOT IN ATTACKING STATE"
+			} else {
+				var attackingPlayer, targetPlayer *Player
+				p.Output <- "ACCEPT_ATTACK " + s[1] + " " + s[2]
+				for k := range p.players {
+					switch p.players[k].Name {
+					case s[1]:
+						attackingPlayer = &p.players[k]
+					case s[3]:
+						targetPlayer = &p.players[k]
+					}
+				}
+				k, _ := strconv.Atoi(s[4])
+				p.acceptAttack(attackingPlayer, targetPlayer, k)
+
+			}
+		case "REJECT_ATTACK":
+			if len(s) < 3 {
+				fmt.Println("SHIT REJECT_ATTACK MESSAGE: " + event)
+				continue
+			}
+			if !p.attackState {
+				p.Output <- "REJECT_ATTACK FAILED, NOT IN ATTACKING STATE"
+			} else {
+				p.Output <- "REJECT_ATTACK " + s[1] + " " + s[2]
 			}
 		}
 	}

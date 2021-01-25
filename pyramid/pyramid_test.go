@@ -61,7 +61,9 @@ func TestPyramidGame(t *testing.T) {
 
 	timer := time.NewTimer(1 * time.Second)
 	<-timer.C
-	p.Input <- "ATTACK " + p1.Name + " " + p2.Name
-
-	for {}
+	p.Input <- p.roomId + " " + p1.Name + " ATTACK " + p2.Name + " 4"
+	p.Input <- p.roomId + " " + p1.Name + " ACCEPT_ATTACK " + p2.Name + " 4"
+	fmt.Println(p.players)
+	for {
+	}
 }

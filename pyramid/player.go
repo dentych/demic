@@ -8,6 +8,7 @@ import (
 type Player struct {
 	Name string
 	Hand []card.Card
+	Sips int
 }
 
 func NewPlayer(name string) *Player {
