@@ -1,4 +1,8 @@
+# Directories
 .idea/
-*.iml
 node_modules/
+.nuxt/
+
+# Files
+*.iml
 demic
