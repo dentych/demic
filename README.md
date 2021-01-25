@@ -1,6 +1,12 @@
-# Pyramid
+# Drunk Pandemic
 
-## Diagrams
+Drunk Pandemic = Demic
+
+## Pyramid
+
+Game #1
+
+### Diagrams
 
 **Sequence diagram for frontend connecting to backend over WebSocket**:
 
