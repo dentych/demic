@@ -69,6 +69,8 @@ func (p *Pyramid) Play() {
 	go p.inputHandler()
 	p.dealCards()
 
+	p.waitForContinue()
+
 	for p.boardCardIndex != len(p.board) {
 		c, err := p.turnNextCard()
 		if err != nil {
@@ -120,8 +122,8 @@ func (p *Pyramid) waitForContinue() {
 	}
 }
 
-func (p *Pyramid) attack(attacker, attackee Player) {
-	p.Output <- attacker.Name + " ATTACKS " + attackee.Name
+func (p *Pyramid) attack(attacker, target Player) {
+	p.Output <- attacker.Name + " ATTACKS " + target.Name
 }
 
 func (p *Pyramid) inputHandler() {

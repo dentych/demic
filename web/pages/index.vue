@@ -8,7 +8,7 @@
                placeholder="Enter a valid room code">
         <p class="font-medium text-lg mb-2">Name:</p>
         <input class="mb-2 py-1 px-2 border rounded focus:outline-none uppercase" type="text" v-model="name"
-               placeholder="Enter a valid room code">
+               placeholder="Enter a name">
         <button class="mb-2 py-2 text-white bg-blue-600 mx-2" @click="join">Join room</button>
       </div>
       <hr>
@@ -30,22 +30,7 @@ export default {
   },
   methods: {
     create() {
-      console.log("Opening websocket")
-      let ws = new WebSocket("ws://localhost:8080/ws")
-      ws.addEventListener("open", function (event) {
-        console.log("WebSocket opened")
-        ws.send(JSON.stringify({action: "start-game"}))
-        console.log(event)
-      })
-
-      ws.addEventListener("message", function (event) {
-        if (event.data === "hello") {
-          console.log("HELLO received")
-        }
-        console.log("MESSAGE:", event)
-      })
-
-      this.$store.commit("set", ws)
+      this.$router.push("/pyramid")
     },
     join() {
     }
