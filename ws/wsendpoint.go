@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 )
@@ -16,7 +17,7 @@ func WsEndpoint(w http.ResponseWriter, r *http.Request) {
 	}
 
 	//log.Println("Client Connected")
-	err = ws.WriteMessage(1, []byte("Hello frontend"))
+	err = ws.WriteMessage(websocket.TextMessage, []byte("hello"))
 	if err != nil {
 		log.Println(err)
 	}

@@ -10,5 +10,5 @@ import (
 func main() {
 	fmt.Println("Application Started")
 	ws.SetupRoutes()
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
