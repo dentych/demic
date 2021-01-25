@@ -6,7 +6,7 @@ type Message struct {
 	Action     string `json:"action"`
 	PlayerName string `json:"name"`
 	RoomID     string `json:"room"`
-	HandIDX    string `json:"card"`
+	HandIDX    string `json:"card.go"`
 }
 
 var Upgrader = websocket.Upgrader{

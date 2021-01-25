@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/gorilla/websocket"
 	"gitlab.com/dentych/demic/pyramid"
-	"gitlab.com/dentych/demic/room"
 	"log"
 	"strconv"
 )
@@ -41,7 +40,7 @@ func Reader(conn *websocket.Conn) {
 		if message.Action == "start-game" {
 			pyramid.StartGame(message.RoomID)
 		}
-		if message.Action == "new-card" {
+		if message.Action == "new-card.go" {
 			handIDX, _ := strconv.Atoi(message.HandIDX)
 			pyramid.NewCard(message.RoomID, message.PlayerName, handIDX)
 		}
