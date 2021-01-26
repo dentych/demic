@@ -4,7 +4,7 @@ import (
 	"gitlab.com/dentych/demic/card"
 )
 
-//Player holds the players hand
+//Player holds the Players hand
 type Player struct {
 	Name string
 	Hand []card.Card

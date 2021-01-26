@@ -5,10 +5,10 @@
         <h1 class="place-self-center text-3xl">Pyramid</h1>
         <p class="font-medium text-lg mb-2">Room code:</p>
         <input class="mb-2 py-1 px-2 border rounded focus:outline-none uppercase" type="text" v-model="code"
-               placeholder="Enter a valid room code">
+               placeholder="Enter a valid room code" @keyup="updateCode">
         <p class="font-medium text-lg mb-2">Name:</p>
         <input class="mb-2 py-1 px-2 border rounded focus:outline-none uppercase" type="text" v-model="name"
-               placeholder="Enter a name">
+               placeholder="Enter a name" @keyup="updateName">
         <button class="mb-2 py-2 text-white bg-blue-600 mx-2" @click="join">Join room</button>
       </div>
       <hr>
@@ -30,10 +30,20 @@ export default {
   },
   methods: {
     create() {
-      this.$router.push("/pyramid")
+      this.$router.push("/pyramid/create")
     },
     join() {
+    },
+    updateCode() {
+      localStorage.setItem("code", this.code)
+    },
+    updateName() {
+      localStorage.setItem("name", this.name)
     }
+  },
+  mounted() {
+    this.code = localStorage.getItem("code")
+    this.name = localStorage.getItem("name")
   }
 }
 </script>
