@@ -9,6 +9,10 @@ import (
 
 func main() {
 	fmt.Println("Application started")
-	ws.SetupRoutes()
+	SetupRoutes()
 	log.Fatal(http.ListenAndServe(":8080", nil))
+}
+
+func SetupRoutes() {
+	http.HandleFunc("/ws", ws.WebsocketEndpoint)
 }
