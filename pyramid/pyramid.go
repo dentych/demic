@@ -72,6 +72,8 @@ func (p *Pyramid) Play() {
 	go p.inputHandler()
 	p.dealCards()
 
+	p.waitForContinue()
+
 	for p.boardCardIndex != len(p.board) {
 		c, err := p.turnNextCard()
 		if err != nil {
