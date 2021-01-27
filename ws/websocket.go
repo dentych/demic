@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"github.com/gorilla/websocket"
 	"gitlab.com/dentych/demic/pyramid"
 	"log"
@@ -21,11 +22,11 @@ func WebsocketEndpoint(w http.ResponseWriter, r *http.Request, rooms map[string]
 		log.Println("Failed to upgrade connection to websocket: ", err)
 		return
 	}
-
 	handleWsMessages(ws, rooms)
 }
 
 func handleWsMessages(ws *websocket.Conn, rooms map[string]*pyramid.Pyramid) {
+	log.Println("handleWsMessages")
 	output := make(chan pyramid.Action, 5)
 	var roomId string
 	var message Message
@@ -38,6 +39,7 @@ func handleWsMessages(ws *websocket.Conn, rooms map[string]*pyramid.Pyramid) {
 	}
 	switch message.Action.ActionType {
 	case pyramid.ActionCreateGame:
+		log.Println("ActionCreateGame")
 		roomId = pyramid.GenerateId(4)
 		rooms[roomId] = pyramid.NewPyramidGame()
 		rooms[roomId].AddPlayer(&pyramid.Player{
@@ -56,18 +58,18 @@ func handleWsMessages(ws *websocket.Conn, rooms map[string]*pyramid.Pyramid) {
 			log.Println("Failed to write message back to client", err)
 			return
 		}
-	case pyramid.ActionPlayerJoin:
-		roomId = message.RoomId
-		v, ok := rooms[roomId]
-		if ok {
-			player := pyramid.NewPlayer(message.Action.Origin)
-			player.Output = output
-			err := v.AddPlayer(player)
-			if err != nil {
-				log.Printf("Failed to add player '%s' to game: %s", message.Action.Origin, err)
-				return
-			}
-		}
+	//case pyramid.ActionPlayerJoin: //
+	//	roomId = message.RoomId
+	//	v, ok := rooms[roomId]
+	//	if ok {
+	//		player := pyramid.NewPlayer(message.Action.Origin)
+	//		player.Output = output
+	//		err := v.AddPlayer(player)
+	//		if err != nil {
+	//			log.Printf("Failed to add player '%s' to game: %s", message.Action.Origin, err)
+	//			return
+	//		}
+	//	}
 	default:
 		log.Println("Incorrect initial message. Closing websocket")
 		return
@@ -79,7 +81,22 @@ func handleWsMessages(ws *websocket.Conn, rooms map[string]*pyramid.Pyramid) {
 			log.Println("Failed to read JSON message from websocket", err)
 			return
 		}
+		handleInput(ws, rooms)
+	}
+}
 
+func handleInput(ws *websocket.Conn, rooms map[string]*pyramid.Pyramid) {
+	log.Println("ActionCreateGame")
+	message := Message{}
+	err := ws.ReadJSON(&message)
+	if err != nil {
+		log.Println("Failed to read JSON message from websocket", err)
+		return
+	}
+	v, ok := rooms[message.RoomId]
+	if ok {
+		fmt.Println("virker")
+		v.Input <- message.Action
 	}
 }
 

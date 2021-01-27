@@ -70,7 +70,7 @@ func (p *Pyramid) AddPlayer(player *Player) error {
 
 func (p *Pyramid) Play() {
 	p.Started = true
-	go p.inputHandler()
+	go p.InputHandler()
 	p.dealCards()
 
 	p.waitForContinue()
@@ -141,7 +141,18 @@ func (p *Pyramid) acceptAttack(attacker, attackee *Player, dmg int) {
 	attackee.Sips += dmg
 }
 
-func (p *Pyramid) inputHandler() {
+//func (p *Pyramid) rejectAttack(attacker, attackee *Player, dmg int) {
+//	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
+//	attacker.Sips += dmg
+//}
+//
+//func (p *Pyramid) rejectAttack(attacker, attackee *Player, dmg int) {
+//	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
+//	attacker.Sips += dmg
+//}
+
+func (p *Pyramid) InputHandler() {
+	output := make(chan Action, 5)
 	//Forslag til struktur: Input = [roomid, acting player, action, message]
 	for {
 		event := <-p.Input
@@ -150,6 +161,19 @@ func (p *Pyramid) inputHandler() {
 			fmt.Println("MESSAGE NOT UNDERSTOOD: " + event.ActionType)
 			continue
 		}
+
+		switch event.ActionType {
+		case ActionPlayerJoin: //
+			fmt.Println("virker")
+			player := NewPlayer(event.Origin)
+			player.Output = output
+			err := p.AddPlayer(player)
+			if err != nil {
+				log.Printf("Failed to add player '%s' to game: %s", event.Origin, err)
+				return
+			}
+		}
+
 		switch s[2] {
 		//Forslag til struktur: Input = [roomid, acting player, action = "ATTACK", target, dmg]
 		case "ATTACK":
