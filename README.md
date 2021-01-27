@@ -22,6 +22,7 @@ sequenceDiagram
   deactivate B
 ```
 
+Create game and join flow
 ```mermaid
 sequenceDiagram
     participant Host
@@ -32,8 +33,14 @@ sequenceDiagram
     Server->>Host: Room ID
     Host->>Host: Wait for others to join
     ClientX->>Server: Join game
+    loop For each player
+        Server->>ClientX: 'player' joined
+    end
     Server->>Host: ClientX joined
     ClientY->>Server: Join game
+    loop for each player
+        Server->>ClientY: player joined
+    end
     Server->>Host: ClientY joined
     Server->>ClientX: ClientY joined
     Host->>Server: Start game
