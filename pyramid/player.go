@@ -6,9 +6,10 @@ import (
 
 //Player holds the Players hand
 type Player struct {
-	Name string
-	Hand []card.Card
-	Sips int
+	Name   string
+	Hand   []card.Card
+	Sips   int
+	Output chan Action `json:"-"`
 }
 
 func NewPlayer(name string) *Player {

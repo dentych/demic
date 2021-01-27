@@ -16,8 +16,7 @@ var (
 )
 
 type Pyramid struct {
-	Input  chan Action `json:"-"`
-	Output chan Action `json:"-"`
+	Input chan Action `json:"-"`
 
 	RoomId         string   `json:"room_id"`
 	Started        bool     `json:"started"`
@@ -46,7 +45,6 @@ func NewPyramidGame() *Pyramid {
 	p.attackState = false
 
 	p.Input = make(chan Action, 25)
-	p.Output = make(chan Action, 25)
 
 	return &p
 }
@@ -63,6 +61,10 @@ func (p *Pyramid) AddPlayer(player *Player) error {
 	}
 
 	p.Players = append(p.Players, *player)
+	p.output(Action{
+		ActionType: ActionPlayerJoined,
+		Target:     player.Name,
+	})
 	return nil
 }
 
@@ -90,6 +92,12 @@ func (p *Pyramid) Play() {
 
 func (p *Pyramid) Continue() {
 	p.cont = true
+}
+
+func (p *Pyramid) output(action Action) {
+	for _, player := range p.Players {
+		player.Output <- action
+	}
 }
 
 func (p *Pyramid) dealCards() {

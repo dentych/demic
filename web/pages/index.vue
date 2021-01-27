@@ -33,6 +33,9 @@ export default {
       this.$router.push("/pyramid/create")
     },
     join() {
+      this.$store.commit("setPlayerName", this.name)
+      this.$store.commit("setRoomCode", this.code)
+      this.$router.push("/pyramid/" + this.code)
     },
     updateCode() {
       localStorage.setItem("code", this.code)

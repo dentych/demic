@@ -1,4 +1,7 @@
 export default {
+    server: {
+        host: "0.0.0.0"
+    },
     head: {
         meta: [
             { charset: 'utf-8' },
