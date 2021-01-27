@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"gitlab.com/dentych/demic/pyramid"
@@ -15,6 +16,13 @@ type Message struct {
 
 var upgrader websocket.Upgrader
 
+type Client struct {
+	conn   *websocket.Conn
+	game   *pyramid.Pyramid
+	player *pyramid.Player
+	output chan pyramid.Action
+}
+
 func WebsocketEndpoint(w http.ResponseWriter, r *http.Request, rooms map[string]*pyramid.Pyramid) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -22,93 +30,98 @@ func WebsocketEndpoint(w http.ResponseWriter, r *http.Request, rooms map[string]
 		log.Println("Failed to upgrade connection to websocket: ", err)
 		return
 	}
-	handleWsMessages(ws, rooms)
+
+	client := Client{conn: ws, output: make(chan pyramid.Action, 10)}
+	go client.handleIncoming()
+	go client.handleOutgoing()
 }
 
-func handleWsMessages(ws *websocket.Conn, rooms map[string]*pyramid.Pyramid) {
-	log.Println("handleWsMessages")
-	output := make(chan pyramid.Action, 5)
-	var roomId string
+func (c *Client) handleIncoming() {
 	var message Message
-
-	defer ws.Close()
-	err := ws.ReadJSON(&message)
-	if err != nil {
-		log.Println("Failed to read initial message from websocket", err)
-		return
-	}
-	switch message.Action.ActionType {
-	case pyramid.ActionCreateGame:
-		log.Println("ActionCreateGame")
-		roomId = pyramid.GenerateId(4)
-		rooms[roomId] = pyramid.NewPyramidGame()
-		rooms[roomId].AddPlayer(&pyramid.Player{
-			Name:   "HOST",
-			Output: output,
-		})
-		err = ws.WriteJSON(Message{
-			RoomId: roomId,
-			Action: pyramid.Action{
-				ActionType: pyramid.ActionGameCreated,
-				Origin:     "",
-				Target:     roomId,
-			},
-		})
-		if err != nil {
-			log.Println("Failed to write message back to client", err)
-			return
-		}
-	//case pyramid.ActionPlayerJoin: //
-	//	roomId = message.RoomId
-	//	v, ok := rooms[roomId]
-	//	if ok {
-	//		player := pyramid.NewPlayer(message.Action.Origin)
-	//		player.Output = output
-	//		err := v.AddPlayer(player)
-	//		if err != nil {
-	//			log.Printf("Failed to add player '%s' to game: %s", message.Action.Origin, err)
-	//			return
-	//		}
-	//	}
-	default:
-		log.Println("Incorrect initial message. Closing websocket")
-		return
-	}
-	go handleOutput(ws, roomId, output)
 	for {
-		err = ws.ReadJSON(&message)
+		err := c.conn.ReadJSON(&message)
 		if err != nil {
-			log.Println("Failed to read JSON message from websocket", err)
+			log.Println("Failed to read incoming message from websocket:", err)
+			var closeErr *websocket.CloseError
+			if errors.As(err, &closeErr) {
+				if c.game != nil {
+					c.game.PlayerLeave <- c.player
+				}
+			}
 			return
 		}
-		handleInput(ws, rooms)
+		err = c.handleIncomingMessage(&message)
+		if err != nil {
+			log.Println("Error handling incoming message:", err)
+		}
 	}
 }
 
-func handleInput(ws *websocket.Conn, rooms map[string]*pyramid.Pyramid) {
-	log.Println("ActionCreateGame")
-	message := Message{}
-	err := ws.ReadJSON(&message)
-	if err != nil {
-		log.Println("Failed to read JSON message from websocket", err)
-		return
-	}
-	v, ok := rooms[message.RoomId]
-	if ok {
-		fmt.Println("virker")
-		v.Input <- message.Action
-	}
-}
-
-func handleOutput(ws *websocket.Conn, roomId string, output <-chan pyramid.Action) {
+func (c *Client) handleOutgoing() {
 	for {
-		action := <-output
-		err := ws.WriteJSON(Message{
+		action := <-c.output
+		roomId := ""
+		if c.game != nil {
+			roomId = c.game.RoomId
+		}
+		err := c.conn.WriteJSON(Message{
 			RoomId: roomId,
 			Action: action,
 		})
 		if err != nil {
+			log.Println("Error writing to websocket:", err)
+			var closeErr *websocket.CloseError
+			if errors.As(err, &closeErr) {
+				if c.game != nil {
+					c.game.PlayerLeave <- c.player
+				}
+			}
 			return
 		}
 	}
+}
+
+func (c *Client) handleIncomingMessage(msg *Message) error {
+	var err error
+	switch msg.Action.ActionType {
+	case pyramid.ActionCreateGame:
+		err = c.createGame(msg)
+	case pyramid.ActionPlayerJoin:
+		err = c.joinGame(msg)
+	default:
+		if c.game != nil {
+			c.game.Input <- msg.Action
+		}
+	}
+	return err
+}
+
+func (c *Client) createGame(msg *Message) error {
+	roomId := pyramid.GenerateId(4)
+	game := pyramid.NewPyramidGame()
+	_, ok := pyramid.PyramidRooms[roomId]
+	if ok {
+		return fmt.Errorf("tried to create pyramid game with existing ID: %s", msg.RoomId)
+	} else {
+		pyramid.PyramidRooms[roomId] = game
+		c.game = game
+		c.output <- pyramid.Action{ActionType: pyramid.ActionGameCreated, Target: roomId}
+		c.player = pyramid.NewPlayer("HOST")
+		c.player.Output = c.output
+		c.game.PlayerJoin <- c.player
+	}
+	return nil
+}
+
+func (c *Client) joinGame(msg *Message) error {
+	if c.game == nil {
+		var ok bool
+		c.game, ok = pyramid.PyramidRooms[msg.RoomId]
+		if !ok {
+			return fmt.Errorf("player tried to join game with ID %s, which was not found", msg.RoomId)
+		}
+	}
+	c.player = &pyramid.Player{Name: msg.Action.Origin, Output: c.output}
+	c.game.PlayerJoin <- c.player
+	return nil
 }

@@ -5,6 +5,7 @@ const (
 	ActionGameCreated  = "game-created"
 	ActionPlayerJoin   = "player-join"
 	ActionPlayerJoined = "player-joined"
+	ActionPlayerLeft = "player-left"
 	ActionAttack       = "player-attack"
 	ActionAcceptAttack = "player-accept-attack"
 	ActionRejectAttack = "player-reject-attack"

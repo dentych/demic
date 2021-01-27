@@ -15,8 +15,12 @@ var (
 	ErrNoMoreCards      = fmt.Errorf("no more cards to turn")
 )
 
+var PyramidRooms map[string]*Pyramid
+
 type Pyramid struct {
-	Input chan Action `json:"-"`
+	Input       chan Action  `json:"-"`
+	PlayerJoin  chan *Player `json:"-"`
+	PlayerLeave chan *Player `json:"-"`
 
 	RoomId         string   `json:"room_id"`
 	Started        bool     `json:"started"`
@@ -36,6 +40,10 @@ type Attack struct {
 	Dmg      int
 }
 
+func init() {
+	PyramidRooms = make(map[string]*Pyramid)
+}
+
 func NewPyramidGame() *Pyramid {
 	p := Pyramid{}
 	p.RoomId = GenerateId(4)
@@ -45,11 +53,17 @@ func NewPyramidGame() *Pyramid {
 	p.attackState = false
 
 	p.Input = make(chan Action, 25)
+	p.PlayerJoin = make(chan *Player)
+	p.PlayerLeave = make(chan *Player)
+
+	go p.InputHandler()
+	go p.playerJoinHandler()
+	go p.playerLeaveHandler()
 
 	return &p
 }
 
-func (p *Pyramid) AddPlayer(player *Player) error {
+func (p *Pyramid) addPlayer(player *Player) error {
 	if p.Started {
 		return ErrGameStarted
 	}
@@ -60,6 +74,9 @@ func (p *Pyramid) AddPlayer(player *Player) error {
 		}
 	}
 
+	for _, v := range p.Players {
+		player.Output <- Action{ActionType: ActionPlayerJoined, Target: v.Name}
+	}
 	p.Players = append(p.Players, *player)
 	p.output(Action{
 		ActionType: ActionPlayerJoined,
@@ -68,9 +85,21 @@ func (p *Pyramid) AddPlayer(player *Player) error {
 	return nil
 }
 
-func (p *Pyramid) Play() {
+func (p *Pyramid) removePlayer(player *Player) error {
+	for i := range p.Players {
+		if player.Name == p.Players[i].Name {
+			p.Players[len(p.Players)-1], p.Players[i] = p.Players[i], p.Players[len(p.Players)-1]
+			p.Players = p.Players[:len(p.Players)-1]
+			p.output(Action{ActionType: ActionPlayerLeft, Target: player.Name})
+			return nil
+		}
+	}
+
+	return fmt.Errorf("player '%s' wasn't found", player.Name)
+}
+
+func (p *Pyramid) play() {
 	p.Started = true
-	go p.InputHandler()
 	p.dealCards()
 
 	p.waitForContinue()
@@ -136,11 +165,6 @@ func (p *Pyramid) attack(attacker, attackee *Player, dmg int) {
 	//p.Output <- attacker.Name + " ATTACKS " + attackee.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
 }
 
-func (p *Pyramid) acceptAttack(attacker, attackee *Player, dmg int) {
-	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
-	attackee.Sips += dmg
-}
-
 //func (p *Pyramid) rejectAttack(attacker, attackee *Player, dmg int) {
 //	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
 //	attacker.Sips += dmg
@@ -151,8 +175,12 @@ func (p *Pyramid) acceptAttack(attacker, attackee *Player, dmg int) {
 //	attacker.Sips += dmg
 //}
 
+func (p *Pyramid) acceptAttack(attacker, attackee *Player, dmg int) {
+	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
+	attackee.Sips += dmg
+}
+
 func (p *Pyramid) InputHandler() {
-	output := make(chan Action, 5)
 	//Forslag til struktur: Input = [roomid, acting player, action, message]
 	for {
 		event := <-p.Input
@@ -160,18 +188,6 @@ func (p *Pyramid) InputHandler() {
 		if len(s) < 1 {
 			fmt.Println("MESSAGE NOT UNDERSTOOD: " + event.ActionType)
 			continue
-		}
-
-		switch event.ActionType {
-		case ActionPlayerJoin: //
-			fmt.Println("virker")
-			player := NewPlayer(event.Origin)
-			player.Output = output
-			err := p.AddPlayer(player)
-			if err != nil {
-				log.Printf("Failed to add player '%s' to game: %s", event.Origin, err)
-				return
-			}
 		}
 
 		switch s[2] {
@@ -230,6 +246,26 @@ func (p *Pyramid) InputHandler() {
 			} else {
 				//p.Output <- "REJECT_ATTACK " + s[1] + " " + s[2]
 			}
+		}
+	}
+}
+
+func (p *Pyramid) playerJoinHandler() {
+	for {
+		pl := <-p.PlayerJoin
+		err := p.addPlayer(pl)
+		if err != nil {
+			log.Println("Failed to add player "+pl.Name, err)
+		}
+	}
+}
+
+func (p *Pyramid) playerLeaveHandler() {
+	for {
+		pl := <-p.PlayerLeave
+		err := p.removePlayer(pl)
+		if err != nil {
+			log.Println("Failed to remove player: "+pl.Name, err)
 		}
 	}
 }

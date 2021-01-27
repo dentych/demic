@@ -8,10 +8,8 @@ import (
 	"net/http"
 )
 
-var PyramidRooms map[string]*pyramid.Pyramid
 
 func main() {
-	PyramidRooms = make(map[string]*pyramid.Pyramid)
 	log.Println("Starting demic")
 	log.Println("Setting up routes")
 	SetupRoutes()
@@ -21,11 +19,11 @@ func main() {
 
 func SetupRoutes() {
 	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws.WebsocketEndpoint(w, r, PyramidRooms)
+		ws.WebsocketEndpoint(w, r, pyramid.PyramidRooms)
 	})
 
 	http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
-		output, err := json.Marshal(PyramidRooms)
+		output, err := json.Marshal(pyramid.PyramidRooms)
 		if err != nil {
 			log.Println("Failed to marshal pyramid rooms", err)
 			return
