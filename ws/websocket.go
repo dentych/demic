@@ -23,7 +23,7 @@ type Client struct {
 	output chan pyramid.Action
 }
 
-func WebsocketEndpoint(w http.ResponseWriter, r *http.Request, rooms map[string]*pyramid.Pyramid) {
+func WebsocketEndpoint(w http.ResponseWriter, r *http.Request) {
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -106,7 +106,6 @@ func (c *Client) createGame(msg *Message) error {
 		pyramid.PyramidRooms[roomId] = game
 		c.game = game
 		c.output <- pyramid.Action{ActionType: pyramid.ActionGameCreated, Target: roomId}
-		c.player = pyramid.NewPlayer("HOST")
 		c.player.Output = c.output
 		c.game.PlayerJoin <- c.player
 	}
