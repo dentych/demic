@@ -1,6 +1,7 @@
 package pyramid
 
 import (
+	"bytes"
 	"fmt"
 	"gitlab.com/dentych/demic/card"
 	"log"
@@ -130,11 +131,23 @@ func (p *Pyramid) output(action Action) {
 }
 
 func (p *Pyramid) dealCards() {
+	var handStr bytes.Buffer
 	p.Started = true
 	p.deck = card.Shuffle(p.deck)
 	p.board, p.deck = card.Deal(p.deck, 10)
 	for k := range p.Players {
 		p.Players[k].Hand, p.deck = card.Deal(p.deck, 4)
+		for _, v := range p.Players[k].Hand {
+			handStr.WriteString(v.Rank)
+			handStr.WriteRune(v.Suit)
+			handStr.WriteString(",")
+		}
+		p.Players[k].Output <- Action{
+			ActionType: ActionDealHand,
+			Origin:     p.Players[k].Name,
+			Target:     handStr.String()[:len(handStr.String())-1],
+		}
+
 	}
 }
 
@@ -161,91 +174,71 @@ func (p *Pyramid) waitForContinue() {
 	}
 }
 
-func (p *Pyramid) attack(attacker, attackee *Player, dmg int) {
-	//p.Output <- attacker.Name + " ATTACKS " + attackee.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
+func (p *Pyramid) attack(attacker, attackee *Player) {
+	p.output(Action{
+		ActionType: ActionAttack,
+		Origin:     attacker.Name,
+		Target:     attackee.Name,
+	})
 }
 
-//func (p *Pyramid) rejectAttack(attacker, attackee *Player, dmg int) {
-//	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
-//	attacker.Sips += dmg
-//}
-//
-//func (p *Pyramid) rejectAttack(attacker, attackee *Player, dmg int) {
-//	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
-//	attacker.Sips += dmg
-//}
+func (p *Pyramid) rejectAttack(attacker, attackee *Player) {
+	p.output(Action{
+		ActionType: ActionRejectAttack,
+		Origin:     attacker.Name,
+		Target:     attackee.Name,
+	})
+}
 
-func (p *Pyramid) acceptAttack(attacker, attackee *Player, dmg int) {
+func (p *Pyramid) acceptAttack(attacker, attackee *Player) {
+	p.output(Action{
+		ActionType: ActionAcceptAttack,
+		Origin:     attacker.Name,
+		Target:     attackee.Name,
+	})
+}
+
+func (p *Pyramid) pickCard(player *Player, idx int) {
+	p.output(Action{
+		ActionType: ActionAcceptAttack,
+		Origin:     player.Name,
+		Target:     strconv.Itoa(idx),
+	})
+}
+
+func (p *Pyramid) turnCard(origin Player, cardIdx int) {
 	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
-	attackee.Sips += dmg
 }
 
 func (p *Pyramid) InputHandler() {
+	var origin, target *Player
+
 	//Forslag til struktur: Input = [roomid, acting player, action, message]
 	for {
 		event := <-p.Input
-		var s []string
-		if len(s) < 1 {
-			fmt.Println("MESSAGE NOT UNDERSTOOD: " + event.ActionType)
-			continue
+		for _, player := range p.Players {
+			switch player.Name {
+			case event.Origin:
+				origin = &player
+			case event.Target:
+				target = &player
+			}
 		}
-
-		switch s[2] {
-		//Forslag til struktur: Input = [roomid, acting player, action = "ATTACK", target, dmg]
-		case "ATTACK":
-			if len(s) < 4 {
-				fmt.Println("SHIT ATTACK MESSAGE: " + event.ActionType)
-				continue
+		switch event.ActionType {
+		case ActionStartGame:
+			p.play()
+		case ActionAttack:
+			p.attack(origin, target)
+		case ActionAcceptAttack:
+			p.rejectAttack(origin, target)
+		case ActionRejectAttack:
+			p.acceptAttack(origin, target)
+		case ActionPickCard:
+			target, err := strconv.Atoi(event.Target)
+			if err != nil {
+				log.Println("Cannot convert string to int: "+event.Target, err)
 			}
-			if !p.attackState {
-				//p.Output <- "ATTACKING FAILED, NOT IN ATTACKING STATE"
-			} else {
-				var attackingPlayer, targetPlayer *Player
-				//p.Output <- "ATTACKING " + s[1] + " " + s[2]
-				for k := range p.Players {
-					switch p.Players[k].Name {
-					case s[1]:
-						attackingPlayer = &p.Players[k]
-					case s[3]:
-						targetPlayer = &p.Players[k]
-					}
-				}
-				k, _ := strconv.Atoi(s[4])
-				p.attack(attackingPlayer, targetPlayer, k)
-			}
-		//Forslag til struktur: Input = [roomid, acting player, action = "ATTACK", target, dmg]
-		case "ACCEPT_ATTACK":
-			if len(s) < 3 {
-				fmt.Println("SHIT ACCEPT_ATTACK MESSAGE: " + event.ActionType)
-				continue
-			}
-			if !p.attackState {
-				//p.Output <- "ACCEPT_ATTACK FAILED, NOT IN ATTACKING STATE"
-			} else {
-				var attackingPlayer, targetPlayer *Player
-				//p.Output <- "ACCEPT_ATTACK " + s[1] + " " + s[2]
-				for k := range p.Players {
-					switch p.Players[k].Name {
-					case s[1]:
-						attackingPlayer = &p.Players[k]
-					case s[3]:
-						targetPlayer = &p.Players[k]
-					}
-				}
-				k, _ := strconv.Atoi(s[4])
-				p.acceptAttack(attackingPlayer, targetPlayer, k)
-
-			}
-		case "REJECT_ATTACK":
-			if len(s) < 3 {
-				fmt.Println("SHIT REJECT_ATTACK MESSAGE: " + event.ActionType)
-				continue
-			}
-			if !p.attackState {
-				//p.Output <- "REJECT_ATTACK FAILED, NOT IN ATTACKING STATE"
-			} else {
-				//p.Output <- "REJECT_ATTACK " + s[1] + " " + s[2]
-			}
+			p.pickCard(origin, target)
 		}
 	}
 }
