@@ -8,7 +8,6 @@ import (
 	"net/http"
 )
 
-
 func main() {
 	log.Println("Starting demic")
 	log.Println("Setting up routes")
@@ -18,9 +17,7 @@ func main() {
 }
 
 func SetupRoutes() {
-	http.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
-		ws.WebsocketEndpoint(w, r, pyramid.PyramidRooms)
-	})
+	http.HandleFunc("/ws", ws.WebsocketEndpoint)
 
 	http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
 		output, err := json.Marshal(pyramid.PyramidRooms)

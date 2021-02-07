@@ -57,6 +57,7 @@ func NewPyramidGame() *Pyramid {
 	p.PlayerJoin = make(chan *Player)
 	p.PlayerLeave = make(chan *Player)
 
+	go p.play()
 	go p.InputHandler()
 	go p.playerJoinHandler()
 	go p.playerLeaveHandler()
@@ -76,11 +77,13 @@ func (p *Pyramid) addPlayer(player *Player) error {
 	}
 
 	for _, v := range p.Players {
-		player.Output <- Action{ActionType: ActionPlayerJoined, Target: v.Name}
+		if v.Name != "HOST" {
+			player.Output <- Action{ActionType: ActionPlayerJoin, Target: v.Name}
+		}
 	}
 	p.Players = append(p.Players, *player)
 	p.output(Action{
-		ActionType: ActionPlayerJoined,
+		ActionType: ActionPlayerJoin,
 		Target:     player.Name,
 	})
 	return nil
@@ -100,7 +103,9 @@ func (p *Pyramid) removePlayer(player *Player) error {
 }
 
 func (p *Pyramid) play() {
-	p.Started = true
+	for !p.Started {
+		time.Sleep(500 * time.Millisecond)
+	}
 	p.dealCards()
 
 	p.waitForContinue()
@@ -114,9 +119,9 @@ func (p *Pyramid) play() {
 		//p.Output <- "CARD " + string(c.Suit) + c.Rank
 
 		//p.Output <- "ATTACK BEGIN"
-		p.attackState = true
+		p.changeAttackState()
 		p.waitForContinue()
-		p.attackState = false
+		p.changeAttackState()
 		//p.Output <- "ATTACK STOP"
 	}
 }
@@ -154,8 +159,11 @@ func (p *Pyramid) dealCards() {
 	var cardByte bytes.Buffer
 	p.Started = true
 	card.Shuffle(&p.deck)
-	p.board = card.Deal(&p.deck, 10)
+	p.board = card.Deal(&p.deck, 15)
 	for k := range p.Players {
+		if p.Players[k].Name == "HOST" {
+			continue
+		}
 		p.Players[k].Hand = card.Deal(&p.deck, 4)
 		for _, v := range p.Players[k].Hand {
 			cardByte.WriteString(v.Rank)
@@ -199,6 +207,7 @@ func (p *Pyramid) turnNextCard() error {
 func (p *Pyramid) waitForContinue() {
 	for {
 		if p.cont {
+			p.cont = false
 			break
 		}
 		time.Sleep(250 * time.Millisecond)
@@ -310,7 +319,7 @@ func (p *Pyramid) InputHandler() {
 		event := <-p.Input
 		switch event.ActionType {
 		case ActionStartGame:
-			p.play()
+			p.Started = true
 		case ActionAttack:
 			p.attack(event)
 		case ActionAcceptAttack:
@@ -319,6 +328,8 @@ func (p *Pyramid) InputHandler() {
 			p.acceptAttack(event)
 		case ActionPickCard:
 			p.pickCard(event)
+		case ActionContinue:
+			p.Continue()
 		}
 	}
 }

@@ -26,6 +26,10 @@
         <ul class="font-bold">
           <li v-for="player in players">{{ player }}</li>
         </ul>
+        <br>
+        <button class="border" @click="startGame">START GAME</button>
+        <br>
+        <button class="border" @click="nextCard">NEXT CARD</button>
       </div>
     </div>
   </div>
@@ -33,26 +37,9 @@
 
 <script>
 export default {
-  data() {
-    return {
-      code: "",
-      name: "",
-      ws: null,
-      players: []
-    }
-  },
   methods: {
     create() {
-      this.ws = new WebSocket("ws://" + location.hostname + ":8080/ws")
-      this.ws.onopen = () => {
-        this.ws.send(JSON.stringify({action: {action_type: "create-game"}}))
-      }
-
-      this.ws.onmessage = this.messageHandler
-
-      this.ws.onerror = err => {
-        console.log(err)
-      }
+      this.$router.push("/pyramid/host")
     },
     join() {
       this.ws = new WebSocket("ws://" + location.hostname + ":8080/ws")
@@ -63,21 +50,17 @@ export default {
       this.ws.onmessage = this.messageHandler
     },
     updateCode() {
+      this.code = this.code.toUpperCase()
       localStorage.setItem("code", this.code)
     },
     updateName() {
+      this.name = this.name.toUpperCase()
       localStorage.setItem("name", this.name)
     },
     messageHandler(evt) {
       let data = JSON.parse(evt.data)
       switch (data.action.action_type) {
-        case "game-created":
-          console.log("pyramid created with ID", data.action.target)
-          this.code = data.action.target
-          this.updateName()
-          this.updateCode()
-          break
-        case "player-joined":
+        case "player-join":
           this.players.push(data.action.target)
           break
         case "player-left":
@@ -85,6 +68,20 @@ export default {
           this.players.splice(i, 1)
           break
       }
+    },
+    startGame() {
+      this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "start-game", origin: this.name}}))
+    },
+    nextCard() {
+      this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "continue", origin: this.name}}))
+    }
+  },
+  data() {
+    return {
+      code: "",
+      name: "",
+      ws: null,
+      players: []
     }
   },
   mounted() {

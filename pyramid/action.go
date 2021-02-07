@@ -2,10 +2,8 @@ package pyramid
 
 const (
 	ActionCreateGame   = "create-game"
-	ActionGameCreated  = "game-created"
 	ActionPlayerJoin   = "player-join"
-	ActionPlayerJoined = "player-joined"
-	ActionStartGame    = "gm-start-game"
+	ActionStartGame    = "start-game"
 	ActionDealHand     = "player-deal-hand"
 	ActionPlayerLeft   = "player-left"
 	ActionAttack       = "player-attack"
@@ -13,6 +11,7 @@ const (
 	ActionRejectAttack = "player-reject-attack"
 	ActionPickCard     = "player-pick-card"
 	ActionAttackState  = "game-attack-state"
+	ActionContinue     = "continue"
 )
 
 // Action struct that is used to send/receive messages to/from clients.

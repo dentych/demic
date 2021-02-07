@@ -105,7 +105,8 @@ func (c *Client) createGame(msg *Message) error {
 	} else {
 		pyramid.PyramidRooms[roomId] = game
 		c.game = game
-		c.output <- pyramid.Action{ActionType: pyramid.ActionGameCreated, Target: roomId}
+		c.output <- pyramid.Action{ActionType: pyramid.ActionCreateGame, Target: roomId}
+		c.player = pyramid.NewPlayer("HOST")
 		c.player.Output = c.output
 		c.game.PlayerJoin <- c.player
 	}
