@@ -106,6 +106,7 @@ func (p *Pyramid) play() {
 	for !p.Started {
 		time.Sleep(500 * time.Millisecond)
 	}
+	p.output(Action{ActionType: ActionStartGame})
 	p.dealCards()
 
 	p.waitForContinue()
@@ -340,6 +341,13 @@ func (p *Pyramid) playerJoinHandler() {
 		err := p.addPlayer(pl)
 		if err != nil {
 			log.Println("Failed to add player "+pl.Name, err)
+		}
+		if len(p.Players) > 1 {
+			pl.Output <- Action{
+				ActionType: ActionHost,
+				Origin:     "",
+				Target:     p.Players[1].Name,
+			}
 		}
 	}
 }

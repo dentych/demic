@@ -12,6 +12,7 @@ const (
 	ActionPickCard     = "player-pick-card"
 	ActionAttackState  = "game-attack-state"
 	ActionContinue     = "continue"
+	ActionHost         = "host"
 )
 
 // Action struct that is used to send/receive messages to/from clients.

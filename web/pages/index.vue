@@ -1,5 +1,10 @@
 <template>
-  <div class="flex justify-center m-4">
-    <NuxtLink to="/pyramid"><button class="focus:outline-none px-12 py-3 border bg-blue-200 text-lg hover:bg-blue-300"> Pyramid </button></NuxtLink>
+  <div class="flex flex-col m-4">
+    <span class="text-center text-3xl font-light mt-4 mb-8">Select a game</span>
+    <NuxtLink to="/pyramid">
+      <button class="focus:outline-none w-full py-4 border bg-yellow-600 text-yellow-100 border border-yellow-800 text-4xl hover:bg-yellow-800">
+        PYRAMID
+      </button>
+    </NuxtLink>
   </div>
 </template>
