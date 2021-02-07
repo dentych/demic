@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"gitlab.com/dentych/demic/card"
 	"log"
-	"strconv"
 	"time"
 )
 
@@ -14,6 +13,7 @@ var (
 	ErrGameNotStarted   = fmt.Errorf("game is not Started")
 	ErrPlayerNameExists = fmt.Errorf("player name already exists")
 	ErrNoMoreCards      = fmt.Errorf("no more cards to turn")
+	ErrAttackState      = fmt.Errorf("wrong state of the game")
 )
 
 var PyramidRooms map[string]*Pyramid
@@ -106,10 +106,11 @@ func (p *Pyramid) play() {
 	p.waitForContinue()
 
 	for p.boardCardIndex != len(p.board) {
-		_, err := p.turnNextCard()
+		err := p.turnNextCard()
 		if err != nil {
 			log.Panic(err)
 		}
+
 		//p.Output <- "CARD " + string(c.Suit) + c.Rank
 
 		//p.Output <- "ATTACK BEGIN"
@@ -118,6 +119,25 @@ func (p *Pyramid) play() {
 		p.attackState = false
 		//p.Output <- "ATTACK STOP"
 	}
+}
+
+func (p *Pyramid) changeAttackState() {
+	var attackStateStr string
+	switch p.attackState {
+	case true:
+		p.attackState = false
+		attackStateStr = "false"
+	case false:
+		p.attackState = true
+		attackStateStr = "true"
+	}
+
+	p.output(Action{
+		ActionType: ActionAttackState,
+		Origin:     p.Players[0].Name,
+		Target:     attackStateStr,
+	})
+
 }
 
 func (p *Pyramid) Continue() {
@@ -131,38 +151,49 @@ func (p *Pyramid) output(action Action) {
 }
 
 func (p *Pyramid) dealCards() {
-	var handStr bytes.Buffer
+	var cardByte bytes.Buffer
 	p.Started = true
-	p.deck = card.Shuffle(p.deck)
-	p.board, p.deck = card.Deal(p.deck, 10)
+	card.Shuffle(&p.deck)
+	p.board = card.Deal(&p.deck, 10)
 	for k := range p.Players {
-		p.Players[k].Hand, p.deck = card.Deal(p.deck, 4)
+		p.Players[k].Hand = card.Deal(&p.deck, 4)
 		for _, v := range p.Players[k].Hand {
-			handStr.WriteString(v.Rank)
-			handStr.WriteRune(v.Suit)
-			handStr.WriteString(",")
+			cardByte.WriteString(v.Rank)
+			cardByte.WriteRune(v.Suit)
+			cardByte.WriteString(",")
 		}
+		cardStr := cardByte.String()[:len(cardByte.String())-1]
 		p.Players[k].Output <- Action{
 			ActionType: ActionDealHand,
 			Origin:     p.Players[k].Name,
-			Target:     handStr.String()[:len(handStr.String())-1],
+			Target:     cardStr,
 		}
 
 	}
 }
 
-func (p *Pyramid) turnNextCard() (*card.Card, error) {
+func (p *Pyramid) turnNextCard() error {
+	var cardByte bytes.Buffer
 	if !p.Started {
-		return nil, ErrGameNotStarted
+		return ErrGameNotStarted
+	}
+	if p.boardCardIndex >= len(p.board) {
+		return ErrNoMoreCards
 	}
 
-	if p.boardCardIndex < len(p.board) {
-		c := p.board[p.boardCardIndex]
-		p.boardCardIndex++
-		return &c, nil
-	} else {
-		return nil, ErrNoMoreCards
+	c := p.board[p.boardCardIndex]
+	p.boardCardIndex++
+
+	cardByte.WriteString(c.Rank)
+	cardByte.WriteRune(c.Suit)
+	cardStr := cardByte.String()
+
+	p.Players[0].Output <- Action{
+		ActionType: ActionDealHand,
+		Origin:     p.Players[0].Name,
+		Target:     cardStr,
 	}
+	return nil
 }
 
 func (p *Pyramid) waitForContinue() {
@@ -174,71 +205,120 @@ func (p *Pyramid) waitForContinue() {
 	}
 }
 
-func (p *Pyramid) attack(attacker, attackee *Player) {
-	p.output(Action{
+func (p *Pyramid) attack(event Action) error {
+	var originIdx, targetIdx int
+	if !p.attackState {
+		return ErrAttackState
+	}
+
+	for k, player := range p.Players {
+		switch player.Name {
+		case event.Origin:
+			originIdx = k
+		case event.Target:
+			targetIdx = k
+		}
+	}
+
+	p.Players[targetIdx].Output <- Action{
 		ActionType: ActionAttack,
-		Origin:     attacker.Name,
-		Target:     attackee.Name,
-	})
+		Origin:     p.Players[originIdx].Name,
+		Target:     p.Players[targetIdx].Name,
+	}
+	return nil
 }
 
-func (p *Pyramid) rejectAttack(attacker, attackee *Player) {
-	p.output(Action{
+func (p *Pyramid) rejectAttack(event Action) error {
+	var originIdx, targetIdx int
+	if !p.attackState {
+		return ErrAttackState
+	}
+
+	for k, player := range p.Players {
+		switch player.Name {
+		case event.Origin:
+			originIdx = k
+		case event.Target:
+			targetIdx = k
+		}
+	}
+
+	p.Players[targetIdx].Output <- Action{
 		ActionType: ActionRejectAttack,
-		Origin:     attacker.Name,
-		Target:     attackee.Name,
-	})
+		Origin:     p.Players[originIdx].Name,
+		Target:     p.Players[targetIdx].Name,
+	}
+	return nil
 }
 
-func (p *Pyramid) acceptAttack(attacker, attackee *Player) {
-	p.output(Action{
+func (p *Pyramid) acceptAttack(event Action) error {
+	var originIdx, targetIdx int
+	if !p.attackState {
+		return ErrAttackState
+	}
+
+	for k, player := range p.Players {
+		switch player.Name {
+		case event.Origin:
+			originIdx = k
+		case event.Target:
+			targetIdx = k
+		}
+	}
+
+	p.Players[targetIdx].Output <- Action{
 		ActionType: ActionAcceptAttack,
-		Origin:     attacker.Name,
-		Target:     attackee.Name,
-	})
+		Origin:     p.Players[originIdx].Name,
+		Target:     p.Players[targetIdx].Name,
+	}
+	return nil
 }
 
-func (p *Pyramid) pickCard(player *Player, idx int) {
+func (p *Pyramid) pickCard(event Action) error {
+	var originIdx, handIdx int
+	var cardByte bytes.Buffer
+	if !p.attackState {
+		return ErrAttackState
+	}
+
+	for k, player := range p.Players {
+		switch player.Name {
+		case event.Origin:
+			originIdx = k
+		}
+	}
+
+	cardByte.WriteString(p.Players[originIdx].Hand[handIdx].Rank)
+	cardByte.WriteRune(p.Players[originIdx].Hand[handIdx].Suit)
+	cardStr := cardByte.String()
+
 	p.output(Action{
-		ActionType: ActionAcceptAttack,
-		Origin:     player.Name,
-		Target:     strconv.Itoa(idx),
+		ActionType: ActionPickCard,
+		Origin:     p.Players[originIdx].Name,
+		Target:     cardStr,
 	})
+	p.Players[originIdx].Hand[handIdx] = card.Deal(&p.deck, 1)[0]
+	return nil
 }
 
-func (p *Pyramid) turnCard(origin Player, cardIdx int) {
+func (p *Pyramid) turnCard(event Action) {
 	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
 }
 
 func (p *Pyramid) InputHandler() {
-	var origin, target *Player
-
-	//Forslag til struktur: Input = [roomid, acting player, action, message]
 	for {
 		event := <-p.Input
-		for _, player := range p.Players {
-			switch player.Name {
-			case event.Origin:
-				origin = &player
-			case event.Target:
-				target = &player
-			}
-		}
 		switch event.ActionType {
 		case ActionStartGame:
 			p.play()
 		case ActionAttack:
-			p.attack(origin, target)
+			p.attack(event)
 		case ActionAcceptAttack:
-			p.rejectAttack(origin, target)
+			p.rejectAttack(event)
 		case ActionRejectAttack:
-			p.acceptAttack(origin, target)
+			p.acceptAttack(event)
 		case ActionPickCard:
-			target, err := strconv.Atoi(event.Target)
-			if err != nil {
-				log.Println("Cannot convert string to int: "+event.Target, err)
-			}
-			p.pickCard(origin, target)
+			p.pickCard(event)
 		}
 	}
 }

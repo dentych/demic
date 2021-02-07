@@ -14,13 +14,13 @@ type Card struct {
 	Suit rune
 }
 
-func Deal(deck []Card, n int) ([]Card, []Card) {
+func Deal(deck *[]Card, n int) []Card {
 	var cardList []Card
-	for _, card := range deck[0:n] {
+	for _, card := range (*deck)[0:n] {
 		cardList = append(cardList, card)
-		deck = deck[1:]
+		*deck = (*deck)[1:]
 	}
-	return cardList, deck
+	return cardList
 }
 
 func NewDeck() (deck []Card) {
@@ -45,11 +45,10 @@ func NewDeck() (deck []Card) {
 	return
 }
 
-func Shuffle(d []Card) []Card {
-	for i := 0; i < len(d); i++ {
-		rand.Shuffle(len(d), func (i, j int) {
-			d[i], d[j] = d[j], d[i]
+func Shuffle(deck *[]Card) {
+	for i := 0; i < len(*deck); i++ {
+		rand.Shuffle(len(*deck), func(i, j int) {
+			(*deck)[i], (*deck)[j] = (*deck)[j], (*deck)[i]
 		})
 	}
-	return d
 }
