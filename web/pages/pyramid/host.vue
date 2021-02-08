@@ -138,7 +138,7 @@ export default {
             console.log(this.players)
           }
           break
-        case"player-left":
+        case"player-quit":
           let i = this.players.indexOf(data.action.target)
           this.players.splice(i, 1)
           break

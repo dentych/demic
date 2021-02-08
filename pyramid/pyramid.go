@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gitlab.com/dentych/demic/card"
 	"log"
+	"strconv"
 	"time"
 )
 
@@ -94,7 +95,7 @@ func (p *Pyramid) removePlayer(player *Player) error {
 		if player.Name == p.Players[i].Name {
 			p.Players[len(p.Players)-1], p.Players[i] = p.Players[i], p.Players[len(p.Players)-1]
 			p.Players = p.Players[:len(p.Players)-1]
-			p.output(Action{ActionType: ActionPlayerLeft, Target: player.Name})
+			p.output(Action{ActionType: ActionPlayerQuit, Target: player.Name})
 			return nil
 		}
 	}
@@ -106,42 +107,27 @@ func (p *Pyramid) play() {
 	for !p.Started {
 		time.Sleep(500 * time.Millisecond)
 	}
-	p.output(Action{ActionType: ActionStartGame})
 	p.dealCards()
-
 	p.waitForContinue()
+	p.output(Action{ActionType: ActionStartGame})
 
+	// main loop
 	for p.boardCardIndex != len(p.board) {
 		err := p.turnNextCard()
 		if err != nil {
 			log.Panic(err)
 		}
-
-		//p.Output <- "CARD " + string(c.Suit) + c.Rank
-
-		//p.Output <- "ATTACK BEGIN"
-		p.changeAttackState()
+		p.setAttackState(true)
 		p.waitForContinue()
-		p.changeAttackState()
-		//p.Output <- "ATTACK STOP"
+		p.setAttackState(false)
 	}
 }
 
-func (p *Pyramid) changeAttackState() {
-	var attackStateStr string
-	switch p.attackState {
-	case true:
-		p.attackState = false
-		attackStateStr = "false"
-	case false:
-		p.attackState = true
-		attackStateStr = "true"
-	}
-
+func (p *Pyramid) setAttackState(value bool) {
+	p.attackState = value
 	p.output(Action{
 		ActionType: ActionAttackState,
-		Origin:     p.Players[0].Name,
-		Target:     attackStateStr,
+		Target:     strconv.FormatBool(value),
 	})
 
 }
