@@ -103,18 +103,17 @@ export default {
     putCards(data) {
       let cards = data.action.target.split(",")
       cards.sort(function (a, b) {
-        a = a[0]
-        b = b[0]
+        if (a.length === 3) {
+          a = 10
+        } else {
+          a = parseInt(a[0], 10)
+        }
 
-        a = a === 'A' ? 1 : a
-        a = a === 'J' ? 11 : a
-        a = a === 'Q' ? 12 : a
-        a = a === 'K' ? 13 : a
-
-        b = b === 'A' ? 1 : b
-        b = b === 'J' ? 11 : b
-        b = b === 'Q' ? 12 : b
-        b = b === 'K' ? 13 : b
+        if (b.length === 3) {
+          b = 10
+        } else {
+          b = parseInt(b[0], 10)
+        }
 
         return a - b
       })
