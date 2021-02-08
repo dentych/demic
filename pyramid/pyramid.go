@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gitlab.com/dentych/demic/card"
 	"log"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -152,6 +153,30 @@ func (p *Pyramid) dealCards() {
 			continue
 		}
 		p.Players[k].Hand = card.Deal(&p.deck, 4)
+		sort.SliceStable(p.Players[k].Hand, func(i, j int) bool {
+			var a, b int
+			aRank, bRank := p.Players[k].Hand[i].Rank, p.Players[k].Hand[j].Rank
+			if len(aRank) == 2 {
+				a = 10
+			} else {
+				if aRank[0] == 'A' {
+					a = 0
+				} else {
+					a = int(aRank[0] - 48)
+				}
+			}
+
+			if len(bRank) == 2 {
+				b = 10
+			} else {
+				if bRank[0] == 'A' {
+					b = 0
+				} else {
+					b = int(bRank[0] - 48)
+				}
+			}
+			return a < b
+		})
 		for _, v := range p.Players[k].Hand {
 			cardByte.WriteString(v.Rank)
 			cardByte.WriteRune(v.Suit)
