@@ -39,8 +39,6 @@ type Pyramid struct {
 type Attack struct {
 	Attacker Player
 	Target   Player
-	Accepted bool
-	Dmg      int
 }
 
 func init() {
@@ -118,18 +116,28 @@ func (p *Pyramid) play() {
 		if err != nil {
 			log.Panic(err)
 		}
-		p.setAttackState(true)
+		//p.setAttackState(true)
 		p.waitForContinue()
-		p.setAttackState(false)
+		//p.setAttackState(false)
 	}
 }
 
-func (p *Pyramid) setAttackState(value bool) {
-	p.attackState = value
-	p.output(Action{
+func (p *Pyramid) updateAttackState() {
+	switch len(p.attacks) {
+	case 0:
+		p.attackState = false
+	case 1:
+		p.attackState = true
+	default:
+		p.attackState = true
+		return
+	}
+
+	p.Players[1].Output <- Action{
 		ActionType: ActionAttackState,
-		Target:     strconv.FormatBool(value),
-	})
+		Origin:     p.Players[0].Name,
+		Target:     strconv.FormatBool(p.attackState),
+	}
 
 }
 
@@ -228,10 +236,6 @@ func (p *Pyramid) waitForContinue() {
 
 func (p *Pyramid) attack(event Action) error {
 	var originIdx, targetIdx int
-	if !p.attackState {
-		return ErrAttackState
-	}
-
 	for k, player := range p.Players {
 		switch player.Name {
 		case event.Origin:
@@ -240,6 +244,12 @@ func (p *Pyramid) attack(event Action) error {
 			targetIdx = k
 		}
 	}
+
+	p.attacks = append(p.attacks, Attack{
+		Attacker: p.Players[originIdx],
+		Target:   p.Players[targetIdx],
+	})
+	p.updateAttackState()
 
 	p.Players[targetIdx].Output <- Action{
 		ActionType: ActionAttack,
@@ -251,10 +261,6 @@ func (p *Pyramid) attack(event Action) error {
 
 func (p *Pyramid) rejectAttack(event Action) error {
 	var originIdx, targetIdx int
-	if !p.attackState {
-		return ErrAttackState
-	}
-
 	for k, player := range p.Players {
 		switch player.Name {
 		case event.Origin:
@@ -263,6 +269,14 @@ func (p *Pyramid) rejectAttack(event Action) error {
 			targetIdx = k
 		}
 	}
+
+	for i, attack := range p.attacks {
+		if attack.Attacker.Name == p.Players[originIdx].Name && attack.Target.Name == p.Players[targetIdx].Name {
+			p.attacks[len(p.attacks)-1], p.attacks[i] = p.attacks[i], p.attacks[len(p.attacks)-1]
+			p.attacks = p.attacks[:len(p.attacks)-1]
+		}
+	}
+	p.updateAttackState()
 
 	p.Players[targetIdx].Output <- Action{
 		ActionType: ActionRejectAttack,
@@ -274,10 +288,6 @@ func (p *Pyramid) rejectAttack(event Action) error {
 
 func (p *Pyramid) acceptAttack(event Action) error {
 	var originIdx, targetIdx int
-	if !p.attackState {
-		return ErrAttackState
-	}
-
 	for k, player := range p.Players {
 		switch player.Name {
 		case event.Origin:
@@ -286,6 +296,14 @@ func (p *Pyramid) acceptAttack(event Action) error {
 			targetIdx = k
 		}
 	}
+
+	for i, attack := range p.attacks {
+		if attack.Attacker.Name == p.Players[originIdx].Name && attack.Target.Name == p.Players[targetIdx].Name {
+			p.attacks[len(p.attacks)-1], p.attacks[i] = p.attacks[i], p.attacks[len(p.attacks)-1]
+			p.attacks = p.attacks[:len(p.attacks)-1]
+		}
+	}
+	p.updateAttackState()
 
 	p.Players[targetIdx].Output <- Action{
 		ActionType: ActionAcceptAttack,
@@ -322,8 +340,33 @@ func (p *Pyramid) pickCard(event Action) error {
 	return nil
 }
 
-func (p *Pyramid) turnCard(event Action) {
-	//p.Output <- attackee.Name + " ACCEPTS ATTACK FROM " + attacker.Name + " FOR " + strconv.Itoa(dmg) + " DAMAGE!"
+func (p *Pyramid) ActionNewCard(event Action) {
+	var originIdx, handIdx int
+	var cardByte bytes.Buffer
+	for k, player := range p.Players {
+		switch player.Name {
+		case event.Origin:
+			originIdx = k
+		case event.Target:
+			handIdx = k
+		}
+	}
+	newCard := card.Deal(&p.deck, 1)[0]
+	p.Players[originIdx].Hand[handIdx] = newCard
+
+	for _, v := range p.Players[originIdx].Hand {
+		cardByte.WriteString(v.Rank)
+		cardByte.WriteRune(v.Suit)
+		cardByte.WriteString(",")
+	}
+
+	cardStr := cardByte.String()[:len(cardByte.String())-1]
+
+	p.Players[originIdx].Output <- Action{
+		ActionType: ActionDealHand,
+		Origin:     p.Players[originIdx].Name,
+		Target:     cardStr,
+	}
 }
 
 func (p *Pyramid) InputHandler() {
@@ -335,10 +378,12 @@ func (p *Pyramid) InputHandler() {
 		case ActionAttack:
 			p.attack(event)
 		case ActionAcceptAttack:
-			p.rejectAttack(event)
-		case ActionRejectAttack:
 			p.acceptAttack(event)
+		case ActionRejectAttack:
+			p.rejectAttack(event)
 		case ActionPickCard:
+			p.pickCard(event)
+		case ActionNewCard:
 			p.pickCard(event)
 		case ActionContinue:
 			p.Continue()

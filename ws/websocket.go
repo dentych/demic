@@ -121,6 +121,9 @@ func (c *Client) joinGame(msg *Message) error {
 			return fmt.Errorf("player tried to join game with ID %s, which was not found", msg.RoomId)
 		}
 	}
+	if len(c.game.Players) > 6 {
+		return fmt.Errorf("player tried to join game with ID %s, room is full", msg.RoomId)
+	}
 	c.player = &pyramid.Player{Name: msg.Action.Origin, Output: c.output}
 	c.game.PlayerJoin <- c.player
 	return nil

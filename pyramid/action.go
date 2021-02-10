@@ -13,6 +13,7 @@ const (
 	ActionAttackState  = "attack-state"
 	ActionContinue     = "continue"
 	ActionHost         = "host"
+	ActionNewCard      = "new-card"
 )
 
 // Action struct that is used to send/receive messages to/from clients.
