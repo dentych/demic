@@ -96,6 +96,7 @@
       <h1 class="text-3xl border-b-2 border-dashed border-yellow-600 pb-4 mx-4 text-yellow-800 truncate text-center">
         ACTIONS
       </h1>
+      <p class="p-4">This sidebar is not in use yet 💩</p>
     </div>
   </div>
 </template>
@@ -114,7 +115,7 @@ export default {
       name: "",
       ws: null,
       players: [],
-      cards: []
+      cards: [],
     }
   },
   mounted() {

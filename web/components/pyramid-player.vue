@@ -18,7 +18,7 @@
         <button class="flex-auto focus:outline-none bg-yellow-700 text-yellow-100 text-lg py-4 butte"
                 v-if="started"
                 @click="continueGame"
-                :disabled="!first && !attackMode">
+                :disabled="attackMode">
           <span v-if="first">Turn first card</span>
           <span v-else>Turn next card</span>
         </button>
@@ -32,7 +32,6 @@
       </div>
       <div class="flex space-x-4 px-2">
         <button class="flex-auto focus:outline-none bg-yellow-700 text-yellow-100 text-lg p-4 butte"
-                :disabled="!attackMode"
                 @click="attack">
           I have the card!
         </button>
@@ -76,8 +75,8 @@
       </div>
     </div>
 
-    <div v-if="popupText" class="overlay">
-      <div class="flex flex-col h-screen justify-end">
+    <div v-if="popupText" class="absolute left-0 bottom-0 right-0">
+      <div class="flex flex-col justify-end">
         <div class="bg-green-300 text-center mb-20 mx-10 py-4 text-xl">
           {{ popupText }}
         </div>
@@ -175,7 +174,7 @@ export default {
           this.popupText = "You attacked " + name
           setTimeout(() => {
             this.popupText = null
-          }, 5000)
+          }, 3500)
         }
       }
       this.showDialogPlayerPicker = true

@@ -99,11 +99,11 @@ func (c *Client) handleIncomingMessage(msg *Message) error {
 func (c *Client) createGame(msg *Message) error {
 	roomId := pyramid.GenerateId(4)
 	game := pyramid.NewPyramidGame()
-	_, ok := pyramid.PyramidRooms[roomId]
+	_, ok := pyramid.Rooms[roomId]
 	if ok {
 		return fmt.Errorf("tried to create pyramid game with existing ID: %s", msg.RoomId)
 	} else {
-		pyramid.PyramidRooms[roomId] = game
+		pyramid.Rooms[roomId] = game
 		c.game = game
 		c.output <- pyramid.Action{ActionType: pyramid.ActionCreateGame, Target: roomId}
 		c.player = pyramid.NewPlayer("HOST")
@@ -116,7 +116,7 @@ func (c *Client) createGame(msg *Message) error {
 func (c *Client) joinGame(msg *Message) error {
 	if c.game == nil {
 		var ok bool
-		c.game, ok = pyramid.PyramidRooms[msg.RoomId]
+		c.game, ok = pyramid.Rooms[msg.RoomId]
 		if !ok {
 			return fmt.Errorf("player tried to join game with ID %s, which was not found", msg.RoomId)
 		}

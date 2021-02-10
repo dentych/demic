@@ -20,7 +20,7 @@ func SetupRoutes() {
 	http.HandleFunc("/ws", ws.WebsocketEndpoint)
 
 	http.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
-		output, err := json.Marshal(pyramid.PyramidRooms)
+		output, err := json.Marshal(pyramid.Rooms)
 		if err != nil {
 			log.Println("Failed to marshal pyramid rooms", err)
 			return

@@ -7,6 +7,7 @@ import (
 	"log"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -18,7 +19,7 @@ var (
 	ErrAttackState      = fmt.Errorf("wrong state of the game")
 )
 
-var PyramidRooms map[string]*Pyramid
+var Rooms map[string]*Pyramid
 
 type Pyramid struct {
 	Input       chan Action  `json:"-"`
@@ -28,7 +29,7 @@ type Pyramid struct {
 	RoomId         string   `json:"room_id"`
 	Started        bool     `json:"started"`
 	Players        []Player `json:"players"`
-	attacks        []Attack
+	Attacks        Attacks  `json:"attacks"`
 	boardCardIndex int
 	board          []card.Card
 	deck           []card.Card
@@ -41,8 +42,50 @@ type Attack struct {
 	Target   Player
 }
 
+func (a *Attack) EqualTo(other Attack) bool {
+	if a.Attacker.Name == "" || a.Target.Name == "" {
+		return false
+	}
+	return a.Attacker.Name == other.Attacker.Name && a.Target.Name == other.Target.Name
+}
+
+type Attacks struct {
+	Attacks []Attack `json:"attacks"`
+	mutex   sync.Mutex
+}
+
+func (a *Attacks) Add(attack Attack) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
+	a.Attacks = append(a.Attacks, attack)
+}
+
+func (a *Attacks) Remove(attack Attack) {
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
+
+	if len(a.Attacks) == 0 {
+		return
+	}
+
+	attackIndex := 0
+	for k, v := range a.Attacks {
+		if v.EqualTo(attack) {
+			attackIndex = k
+		}
+	}
+
+	a.Attacks[attackIndex], a.Attacks[len(a.Attacks)-1] = a.Attacks[len(a.Attacks)-1], a.Attacks[attackIndex]
+	a.Attacks = a.Attacks[:len(a.Attacks)-1]
+}
+
+func (a *Attacks) Len() int {
+	return len(a.Attacks)
+}
+
 func init() {
-	PyramidRooms = make(map[string]*Pyramid)
+	Rooms = make(map[string]*Pyramid)
 }
 
 func NewPyramidGame() *Pyramid {
@@ -58,7 +101,7 @@ func NewPyramidGame() *Pyramid {
 	p.PlayerLeave = make(chan *Player)
 
 	go p.play()
-	go p.InputHandler()
+	go p.inputHandler()
 	go p.playerJoinHandler()
 	go p.playerLeaveHandler()
 
@@ -123,7 +166,7 @@ func (p *Pyramid) play() {
 }
 
 func (p *Pyramid) updateAttackState() {
-	switch len(p.attacks) {
+	switch p.Attacks.Len() {
 	case 0:
 		p.attackState = false
 	case 1:
@@ -141,7 +184,7 @@ func (p *Pyramid) updateAttackState() {
 
 }
 
-func (p *Pyramid) Continue() {
+func (p *Pyramid) continueGame() {
 	p.cont = true
 }
 
@@ -245,7 +288,7 @@ func (p *Pyramid) attack(event Action) error {
 		}
 	}
 
-	p.attacks = append(p.attacks, Attack{
+	p.Attacks.Add(Attack{
 		Attacker: p.Players[originIdx],
 		Target:   p.Players[targetIdx],
 	})
@@ -270,12 +313,7 @@ func (p *Pyramid) rejectAttack(event Action) error {
 		}
 	}
 
-	for i, attack := range p.attacks {
-		if attack.Attacker.Name == p.Players[originIdx].Name && attack.Target.Name == p.Players[targetIdx].Name {
-			p.attacks[len(p.attacks)-1], p.attacks[i] = p.attacks[i], p.attacks[len(p.attacks)-1]
-			p.attacks = p.attacks[:len(p.attacks)-1]
-		}
-	}
+	p.Attacks.Remove(Attack{Attacker: p.Players[targetIdx], Target: p.Players[originIdx]})
 	p.updateAttackState()
 
 	p.Players[targetIdx].Output <- Action{
@@ -297,12 +335,7 @@ func (p *Pyramid) acceptAttack(event Action) error {
 		}
 	}
 
-	for i, attack := range p.attacks {
-		if attack.Attacker.Name == p.Players[originIdx].Name && attack.Target.Name == p.Players[targetIdx].Name {
-			p.attacks[len(p.attacks)-1], p.attacks[i] = p.attacks[i], p.attacks[len(p.attacks)-1]
-			p.attacks = p.attacks[:len(p.attacks)-1]
-		}
-	}
+	p.Attacks.Remove(Attack{Attacker: p.Players[targetIdx], Target: p.Players[originIdx]})
 	p.updateAttackState()
 
 	p.Players[targetIdx].Output <- Action{
@@ -315,10 +348,6 @@ func (p *Pyramid) acceptAttack(event Action) error {
 
 func (p *Pyramid) pickCard(event Action) error {
 	var originIdx, handIdx int
-	var cardByte bytes.Buffer
-	if !p.attackState {
-		return ErrAttackState
-	}
 
 	for k, player := range p.Players {
 		switch player.Name {
@@ -327,20 +356,20 @@ func (p *Pyramid) pickCard(event Action) error {
 		}
 	}
 
-	cardByte.WriteString(p.Players[originIdx].Hand[handIdx].Rank)
-	cardByte.WriteRune(p.Players[originIdx].Hand[handIdx].Suit)
-	cardStr := cardByte.String()
+	chosenCard := p.Players[originIdx].Hand[handIdx].String()
 
-	p.output(Action{
+	p.Players[0].Output <- Action{
 		ActionType: ActionPickCard,
 		Origin:     p.Players[originIdx].Name,
-		Target:     cardStr,
-	})
-	p.Players[originIdx].Hand[handIdx] = card.Deal(&p.deck, 1)[0]
+		Target:     chosenCard,
+	}
+	newCard := card.Deal(&p.deck, 1)[0]
+	p.Players[originIdx].Hand[handIdx] = newCard
+	p.Players[originIdx].Output <- Action{ActionType: ActionDealHand, Target: newCard.String()}
 	return nil
 }
 
-func (p *Pyramid) ActionNewCard(event Action) {
+func (p *Pyramid) newCard(event Action) {
 	var originIdx, handIdx int
 	var cardByte bytes.Buffer
 	for k, player := range p.Players {
@@ -369,7 +398,7 @@ func (p *Pyramid) ActionNewCard(event Action) {
 	}
 }
 
-func (p *Pyramid) InputHandler() {
+func (p *Pyramid) inputHandler() {
 	for {
 		event := <-p.Input
 		switch event.ActionType {
@@ -384,9 +413,9 @@ func (p *Pyramid) InputHandler() {
 		case ActionPickCard:
 			p.pickCard(event)
 		case ActionNewCard:
-			p.pickCard(event)
+			p.newCard(event)
 		case ActionContinue:
-			p.Continue()
+			p.continueGame()
 		}
 	}
 }

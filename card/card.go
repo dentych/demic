@@ -14,6 +14,10 @@ type Card struct {
 	Suit rune
 }
 
+func (c *Card) String() string {
+	return c.Rank + string(c.Suit)
+}
+
 func Deal(deck *[]Card, n int) []Card {
 	cards := (*deck)[0:n]
 	*deck = (*deck)[n:]
