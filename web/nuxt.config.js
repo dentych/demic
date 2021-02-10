@@ -12,6 +12,7 @@ export default {
         ]
     },
     buildModules: [
-        "@nuxtjs/tailwindcss"
+        "@nuxtjs/tailwindcss",
+        "@nuxtjs/pwa",
     ]
 }

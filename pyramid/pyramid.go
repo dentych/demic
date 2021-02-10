@@ -144,7 +144,6 @@ func (p *Pyramid) output(action Action) {
 }
 
 func (p *Pyramid) dealCards() {
-	var cardByte bytes.Buffer
 	p.Started = true
 	card.Shuffle(&p.deck)
 	p.board = card.Deal(&p.deck, 15)
@@ -177,6 +176,7 @@ func (p *Pyramid) dealCards() {
 			}
 			return a < b
 		})
+		var cardByte bytes.Buffer
 		for _, v := range p.Players[k].Hand {
 			cardByte.WriteString(v.Rank)
 			cardByte.WriteRune(v.Suit)

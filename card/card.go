@@ -15,12 +15,9 @@ type Card struct {
 }
 
 func Deal(deck *[]Card, n int) []Card {
-	var cardList []Card
-	for _, card := range (*deck)[0:n] {
-		cardList = append(cardList, card)
-		*deck = (*deck)[1:]
-	}
-	return cardList
+	cards := (*deck)[0:n]
+	*deck = (*deck)[n:]
+	return cards
 }
 
 func NewDeck() (deck []Card) {

@@ -32,7 +32,8 @@
       </div>
       <div class="flex space-x-4 px-2">
         <button class="flex-auto focus:outline-none bg-yellow-700 text-yellow-100 text-lg p-4 butte"
-                :disabled="!attackMode">
+                :disabled="!attackMode"
+                @click="attack">
           I have the card!
         </button>
       </div>
@@ -44,6 +45,44 @@
         <img :src="'/playing-cards/' + card + '.png'" alt="card1">
       </div>
     </div>
+
+    <!-- Overlay for choosing a player -->
+    <div class="overlay bg-white" v-if="showDialogPlayerPicker">
+      <div class="flex flex-col space-y-8 p-4">
+        <button class="focus:outline-none bg-yellow-700 text-yellow-100 text-lg py-6 butte"
+                v-for="p in players"
+                v-if="p !== name"
+                @click="dialogChoosePlayer(p)">
+          {{ p }}
+        </button>
+        <button class="focus:outline-none bg-yellow-600 text-yellow-100 text-lg py-6 butte"
+                @click="dialogChoosePlayer(null)">
+          BACK
+        </button>
+      </div>
+    </div>
+
+    <div class="overlay bg-white" v-if="showDialogAttacked">
+      <div class="flex flex-col text-center p-4">
+        <p class="text-xl mb-8">You have been attacked by {{ attacker }}</p>
+        <button class="focus:outline-none bg-yellow-700 text-yellow-100 text-lg py-6 butte mb-8"
+                @click="drink">
+          Drink
+        </button>
+        <button class="focus:outline-none bg-yellow-700 text-yellow-100 text-lg py-6 butte"
+                @click="demandShowCard">
+          Demand show card
+        </button>
+      </div>
+    </div>
+
+    <div v-if="popupText" class="overlay">
+      <div class="flex flex-col h-screen justify-end">
+        <div class="bg-green-300 text-center mb-20 mx-10 py-4 text-xl">
+          {{ popupText }}
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -51,8 +90,13 @@
 .bg-orange-dark {
   background-color: #ffc58c;
 }
+
 .butte:disabled {
   opacity: 50%
+}
+
+.overlay {
+  @apply absolute top-0 left-0 h-screen w-screen
 }
 </style>
 
@@ -67,7 +111,12 @@ export default {
       started: false,
       cards: null,
       attackMode: false,
-      first: true
+      first: true,
+      showDialogPlayerPicker: false,
+      showDialogAttacked: false,
+      choosePlayerFunc: null,
+      popupText: null,
+      attacker: null
     }
   },
   methods: {
@@ -95,6 +144,10 @@ export default {
         case "attack-state":
           this.attackMode = data.action.target === "true"
           break
+        case "player-attack":
+          this.attacker = data.action.origin
+          this.showDialogAttacked = true
+          break
       }
     },
     startGame() {
@@ -105,6 +158,38 @@ export default {
         this.first = false
       }
       this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "continue", origin: this.name}}))
+    },
+    dialogChoosePlayer(name) {
+      this.showDialogPlayerPicker = false
+      if (this.choosePlayerFunc !== null) {
+        this.choosePlayerFunc(name)
+      }
+    },
+    attack() {
+      this.choosePlayerFunc = name => {
+        if (name) {
+          this.ws.send(JSON.stringify({
+            room_id: this.code,
+            action: {action_type: "player-attack", origin: this.name, target: name}
+          }))
+          this.popupText = "You attacked " + name
+          setTimeout(() => {
+            this.popupText = null
+          }, 5000)
+        }
+      }
+      this.showDialogPlayerPicker = true
+    },
+    drink() {
+      this.showDialogAttacked = false
+      this.ws.send(JSON.stringify({
+        room_id: this.code,
+        action: {action_type: "player-accept-attack", origin: this.name, target: this.attacker}
+      }))
+    },
+    demandShowCard() {
+      this.showDialogAttacked = false
+      this.ws
     }
   },
   mounted() {
