@@ -189,7 +189,10 @@ export default {
     },
     demandShowCard() {
       this.showDialogAttacked = false
-      this.ws
+      this.ws.send(JSON.stringify({
+        room_id: this.code,
+        action: {action_type: "player-reject-attack", origin: this.name, target: this.attacker}
+      }))
     }
   },
   mounted() {

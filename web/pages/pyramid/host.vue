@@ -1,7 +1,8 @@
 <template>
-  <div class="flex bg-orange-light h-screen p-4">
-    <div class="flex flex-col flex-grow border-r-4 border-yellow-600 border-dashed" v-if="ws">
-      <h1 class="text-3xl border-b-2 border-dashed border-yellow-600 pb-4 mr-4 text-yellow-800 truncate">
+  <div class="flex bg-orange-light h-screen w-screen p-4">
+
+    <div class="flex-none flex flex-col border-r-4 border-yellow-600 border-dashed w-2/12" v-if="ws">
+      <h1 class="text-3xl border-b-2 border-dashed border-yellow-600 pb-4 mr-4 text-yellow-800">
         <span class="font-extrabold">ROOM CODE:</span> {{ code }}
       </h1>
       <div class="py-4 mr-4 border-b-2 border-dashed border-yellow-600 text-2xl">
@@ -13,9 +14,9 @@
         </ul>
       </div>
     </div>
-    <div class="grid grid-rows-5 gap-2">
 
-      <div class="flex justify-center space-x-16">
+    <div class="grid grid-rows-5 flex-flow-col gap-2">
+      <div class="flex justify-center">
         <div class="h-full">
           <img :src="'/playing-cards/' + cards[14] + '.png'" class="h-full" v-if="cards[14]">
           <img v-else src="/playing-cards/purple_back.png" class="h-full">
@@ -89,7 +90,12 @@
           <img v-else src="/playing-cards/purple_back.png" class="h-full">
         </div>
       </div>
+    </div>
 
+    <div class="flex-none flex flex-col border-l-4 border-yellow-600 border-dashed w-2/12">
+      <h1 class="text-3xl border-b-2 border-dashed border-yellow-600 pb-4 mx-4 text-yellow-800 truncate text-center">
+        ACTIONS
+      </h1>
     </div>
   </div>
 </template>
