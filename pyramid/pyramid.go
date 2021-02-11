@@ -34,6 +34,7 @@ type Pyramid struct {
 	deck           []card.Card
 	cont           bool
 	attackState    bool
+	gameEnd        bool
 }
 
 func init() {
@@ -114,6 +115,12 @@ func (p *Pyramid) play() {
 		p.output(Action{ActionType: ActionNewRound})
 		p.waitForContinue()
 	}
+
+	// Game end
+	p.gameEnd = true
+	p.output(Action{ActionType: ActionGameEnd})
+
+	select {}
 }
 
 func (p *Pyramid) updateAttackState() {
@@ -384,6 +391,8 @@ func (p *Pyramid) inputHandler() {
 			p.newCard(event)
 		case ActionContinue:
 			p.continueGame()
+		case ActionShowCard:
+			p.showCard(event)
 		}
 	}
 }
@@ -413,4 +422,30 @@ func (p *Pyramid) playerLeaveHandler() {
 			log.Println("Failed to remove player: "+pl.Name, err)
 		}
 	}
+}
+
+func (p *Pyramid) showCard(event Action) error {
+	if !p.gameEnd {
+		return fmt.Errorf("game not ended yet")
+	}
+
+	var player Player
+	for _, v := range p.Players {
+		if v.Name == event.Origin {
+			player = v
+			break
+		}
+	}
+
+	cardIndex, err := strconv.Atoi(event.Target)
+	if err != nil {
+		return err
+	}
+	p.Players[0].Output <- Action{
+		ActionType: ActionShowCard,
+		Origin: event.Origin,
+		Target: player.Hand[cardIndex].String(),
+	}
+
+	return nil
 }

@@ -16,11 +16,11 @@
           Start game
         </button>
         <button class="flex-auto focus:outline-none bg-yellow-700 text-yellow-100 text-lg py-4 butte"
-                v-if="started"
+                v-else
                 @click="continueGame"
-                :disabled="attackMode">
-          <span v-if="first">Turn first card</span>
-          <span v-else>Turn next card</span>
+                :disabled="attackMode || gameEnd">
+          <span v-if="rounds < 15">Turn next card</span>
+          <span v-else>Everyone call out their cards</span>
         </button>
       </div>
     </div>
@@ -33,7 +33,7 @@
       <div class="flex space-x-4 px-2">
         <button class="flex-auto focus:outline-none bg-yellow-700 text-yellow-100 text-lg p-4 butte"
                 @click="attack"
-                :disabled="!haveCardEnabled">
+                :disabled="!haveCardButtonEnabled">
           I have the card!
         </button>
       </div>
@@ -41,9 +41,9 @@
 
     <!-- Player cards -->
     <div class="flex" v-if="cards">
-      <div class="flex-auto" v-for="card in cards">
+      <div class="flex-auto" v-for="(card, index) in cards">
         <img :src="'/playing-cards/' + card.card + '.png'" alt="card1" v-if="card.show">
-        <img :src="'/playing-cards/purple_back.png'" alt="card1" v-else>
+        <img :src="'/playing-cards/purple_back.png'" alt="card1" v-else @click="turnCard(index)">
       </div>
     </div>
 
@@ -126,7 +126,6 @@ export default {
       started: false,
       cards: [],
       attackMode: false,
-      first: true,
       showDialogPlayerPicker: false,
       showDialogAttacked: false,
       choosePlayerFunc: null,
@@ -134,8 +133,10 @@ export default {
       attacks: [],
       rejections: [],
       attackedPlayers: [],
-      haveCardEnabled: false,
-      cardsVisible: true
+      haveCardButtonEnabled: false,
+      cardsVisible: true,
+      gameEnd: false,
+      rounds: 0
     }
   },
   methods: {
@@ -170,11 +171,16 @@ export default {
           break
         case "new-round":
           this.newRound()
-          this.haveCardEnabled = true
+          this.haveCardButtonEnabled = true
           this.cards.forEach(card => card.show = false)
+          this.rounds++
           break
         case "player-reject-attack":
           this.rejections.push(data.action.origin)
+          break
+        case "game-end":
+          this.gameEnd = true
+          this.haveCardButtonEnabled = false
           break
       }
     },
@@ -185,9 +191,6 @@ export default {
       this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "start-game", origin: this.name}}))
     },
     continueGame() {
-      if (this.first) {
-        this.first = false
-      }
       this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "continue", origin: this.name}}))
     },
     dialogChoosePlayer(name) {
@@ -228,28 +231,19 @@ export default {
       this.attacks.splice(index, 1)
     },
     showCard(rejectionIndex, cardIndex) {
-      let rank = this.cards[cardIndex].card.slice(0, -1)
-      let suit = ""
-      switch (this.cards[cardIndex].card.slice(-1)) {
-        case "H":
-          suit = "Hearts"
-          break
-        case "D":
-          suit = "Diamonds"
-          break
-        case "C":
-          suit = "Clubs"
-          break
-        case "S":
-          suit = "Spades"
-          break
-      }
-      alert("Chosen card was " + rank + " of " + suit)
       this.rejections.splice(rejectionIndex, 1)
       this.cards[cardIndex].show = true
       this.ws.send(JSON.stringify({
         room_id: this.code,
         action: {action_type: "player-pick-card", origin: this.name, target: cardIndex.toString()}
+      }))
+    },
+    turnCard(index) {
+      if (!this.gameEnd) return
+      this.cards[index].show = true
+      this.ws.send(JSON.stringify({
+        room_id: this.code,
+        action: {action_type: "show-card", origin: this.name, target: index.toString()}
       }))
     }
   },

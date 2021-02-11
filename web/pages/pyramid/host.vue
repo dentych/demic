@@ -13,6 +13,15 @@
           <li class="my-1" v-for="player in players">{{ player }}</li>
         </ul>
       </div>
+      <div class="py-4 mr-4 border-b-2 border-dashed border-yellow-600 text-xl">
+        <span class="font-bold">Wall of Rules:</span>
+        <br>
+        The board contains 15 cards. Each round, 1 card on the board is turned. If you have a card with the same rank,
+        you may give out sips to 1 player for each card. It is okay to lie about having the card. If the player you
+        give sips to doesn't believe you, you have to show the correct card. If you fail to do so, YOU drink instead.
+        If you show the correct card, the other player drinks double. In the end, you call out loud the rank of each
+        card and then press it to show the others. For each card you get wrong, you drink.
+      </div>
     </div>
 
     <div class="grid grid-rows-5 flex-flow-col gap-2">
@@ -144,17 +153,18 @@ export default {
           break
         case"player-join":
           if (data.action.target !== "HOST") {
+            this.actionTexts.unshift("Player '" + data.action.target + "' joined the game!")
             this.players.push(data.action.target)
             console.log(this.players)
           }
           break
         case"player-quit":
+          this.actionTexts.unshift("Player '" + data.action.target + "' quit the game!")
           let i = this.players.indexOf(data.action.target)
           this.players.splice(i, 1)
           break
-        case"gm-start-game":
-          break
         case "player-deal-hand":
+          this.actionTexts.unshift("New card turned. Players can attack!")
           this.cards.push(data.action.target)
           break
         case "player-pick-card":
@@ -171,6 +181,15 @@ export default {
           break
         case "player-accept-attack":
           this.actionTexts.unshift(data.action.origin + " chose to drink!")
+          break
+        case "player-reject-attack":
+          this.actionTexts.unshift(data.action.origin + " rejected the attack from " + data.action.target + ", who must now show the card!")
+          break
+        case "show-card":
+          this.actionTexts.unshift(data.action.origin + " shows card " + data.action.target.slice(0, -1))
+          break
+        case "game-end":
+          this.actionTexts.unshift("No more cards to turn. All players will take turns calling out loud their cards and press them!")
           break
       }
     },
