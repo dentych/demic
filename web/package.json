@@ -4,7 +4,9 @@
   "description": "",
   "scripts": {
     "dev": "nuxt",
-    "generate": "nuxt generate"
+    "generate": "nuxt generate",
+    "build": "nuxt build",
+    "start": "nuxt start"
   },
   "dependencies": {
     "nuxt": "^2.14.12"
