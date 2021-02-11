@@ -14,6 +14,8 @@ const (
 	ActionContinue     = "continue"
 	ActionHost         = "host"
 	ActionNewCard      = "new-card"
+	ActionNewRound     = "new-round"
+	ActionShowCards    = "show-cards"
 )
 
 // Action struct that is used to send/receive messages to/from clients.

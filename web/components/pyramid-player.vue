@@ -32,7 +32,8 @@
       </div>
       <div class="flex space-x-4 px-2">
         <button class="flex-auto focus:outline-none bg-yellow-700 text-yellow-100 text-lg p-4 butte"
-                @click="attack">
+                @click="attack"
+                :disabled="!haveCardEnabled">
           I have the card!
         </button>
       </div>
@@ -41,7 +42,8 @@
     <!-- Player cards -->
     <div class="flex" v-if="cards">
       <div class="flex-auto" v-for="card in cards">
-        <img :src="'/playing-cards/' + card + '.png'" alt="card1">
+        <img :src="'/playing-cards/' + card.card + '.png'" alt="card1" v-if="card.show">
+        <img :src="'/playing-cards/purple_back.png'" alt="card1" v-else>
       </div>
     </div>
 
@@ -50,7 +52,7 @@
       <div class="flex flex-col space-y-8 p-4">
         <button class="focus:outline-none bg-yellow-700 text-yellow-100 text-lg py-6 butte"
                 v-for="p in players"
-                v-if="p !== name"
+                v-if="p !== name && !attackedPlayers.includes(p)"
                 @click="dialogChoosePlayer(p)">
           {{ p }}
         </button>
@@ -61,15 +63,15 @@
       </div>
     </div>
 
-    <div class="overlay bg-white" v-if="showDialogAttacked">
+    <div class="overlay bg-white" v-for="(attacker, index) in attacks">
       <div class="flex flex-col text-center p-4">
         <p class="text-xl mb-8">You have been attacked by {{ attacker }}</p>
         <button class="focus:outline-none bg-yellow-700 text-yellow-100 text-lg py-6 butte mb-8"
-                @click="drink">
+                @click="drink(index)">
           Drink
         </button>
         <button class="focus:outline-none bg-yellow-700 text-yellow-100 text-lg py-6 butte"
-                @click="demandShowCard">
+                @click="demandShowCard(index)">
           Demand show card
         </button>
       </div>
@@ -108,14 +110,16 @@ export default {
       host: false,
       players: [],
       started: false,
-      cards: null,
+      cards: [],
       attackMode: false,
       first: true,
       showDialogPlayerPicker: false,
       showDialogAttacked: false,
       choosePlayerFunc: null,
       popupText: null,
-      attacker: null
+      attacks: [],
+      attackedPlayers: [],
+      haveCardEnabled: false
     }
   },
   methods: {
@@ -134,20 +138,28 @@ export default {
           this.host = data.action.target === this.name
           break
         case "start-game":
-          this.cards = ["purple_back", "purple_back", "purple_back", "purple_back"]
+          this.cards.forEach(x => x.show = false)
           break
         case "player-deal-hand":
-          this.cards = data.action.target.split(",")
+          this.cards = data.action.target.split(",").map(x => {
+            return {card: x, show: true}
+          })
           this.started = true
           break
         case "attack-state":
           this.attackMode = data.action.target === "true"
           break
         case "player-attack":
-          this.attacker = data.action.origin
-          this.showDialogAttacked = true
+          this.attacks.push(data.action.origin)
+          break
+        case "new-round":
+          this.newRound()
+          this.haveCardEnabled = true
           break
       }
+    },
+    newRound() {
+      this.attackedPlayers = []
     },
     startGame() {
       this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "start-game", origin: this.name}}))
@@ -171,6 +183,7 @@ export default {
             room_id: this.code,
             action: {action_type: "player-attack", origin: this.name, target: name}
           }))
+          this.attackedPlayers.push(name)
           this.popupText = "You attacked " + name
           setTimeout(() => {
             this.popupText = null
@@ -179,19 +192,20 @@ export default {
       }
       this.showDialogPlayerPicker = true
     },
-    drink() {
-      this.showDialogAttacked = false
+    drink(index) {
       this.ws.send(JSON.stringify({
         room_id: this.code,
-        action: {action_type: "player-accept-attack", origin: this.name, target: this.attacker}
+        action: {action_type: "player-accept-attack", origin: this.name, target: this.attacks[index]}
       }))
+      this.attacks.splice(index, 1)
     },
-    demandShowCard() {
+    demandShowCard(index) {
       this.showDialogAttacked = false
       this.ws.send(JSON.stringify({
         room_id: this.code,
-        action: {action_type: "player-reject-attack", origin: this.name, target: this.attacker}
+        action: {action_type: "player-reject-attack", origin: this.name, target: this.attacks[index]}
       }))
+      this.attacks.splice(index, 1)
     }
   },
   mounted() {

@@ -7,7 +7,6 @@ import (
 	"log"
 	"sort"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -35,53 +34,6 @@ type Pyramid struct {
 	deck           []card.Card
 	cont           bool
 	attackState    bool
-}
-
-type Attack struct {
-	Attacker Player
-	Target   Player
-}
-
-func (a *Attack) EqualTo(other Attack) bool {
-	if a.Attacker.Name == "" || a.Target.Name == "" {
-		return false
-	}
-	return a.Attacker.Name == other.Attacker.Name && a.Target.Name == other.Target.Name
-}
-
-type Attacks struct {
-	Attacks []Attack `json:"attacks"`
-	mutex   sync.Mutex
-}
-
-func (a *Attacks) Add(attack Attack) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	a.Attacks = append(a.Attacks, attack)
-}
-
-func (a *Attacks) Remove(attack Attack) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	if len(a.Attacks) == 0 {
-		return
-	}
-
-	attackIndex := 0
-	for k, v := range a.Attacks {
-		if v.EqualTo(attack) {
-			attackIndex = k
-		}
-	}
-
-	a.Attacks[attackIndex], a.Attacks[len(a.Attacks)-1] = a.Attacks[len(a.Attacks)-1], a.Attacks[attackIndex]
-	a.Attacks = a.Attacks[:len(a.Attacks)-1]
-}
-
-func (a *Attacks) Len() int {
-	return len(a.Attacks)
 }
 
 func init() {
@@ -159,6 +111,7 @@ func (p *Pyramid) play() {
 		if err != nil {
 			log.Panic(err)
 		}
+		p.output(Action{ActionType: ActionNewRound})
 		//p.setAttackState(true)
 		p.waitForContinue()
 		//p.setAttackState(false)
@@ -347,13 +300,19 @@ func (p *Pyramid) acceptAttack(event Action) error {
 }
 
 func (p *Pyramid) pickCard(event Action) error {
-	var originIdx, handIdx int
+	var originIdx int
 
 	for k, player := range p.Players {
 		switch player.Name {
 		case event.Origin:
 			originIdx = k
 		}
+	}
+
+	handIdx, err := strconv.Atoi(event.Target)
+	if err != nil {
+		// This error handling is shit :P
+		return err
 	}
 
 	chosenCard := p.Players[originIdx].Hand[handIdx].String()
