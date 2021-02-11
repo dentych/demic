@@ -96,7 +96,9 @@
       <h1 class="text-3xl border-b-2 border-dashed border-yellow-600 pb-4 mx-4 text-yellow-800 truncate text-center">
         ACTIONS
       </h1>
-      <p class="p-4">This sidebar is not in use yet 💩</p>
+      <div class="flex flex-col overflow-hidden">
+        <p class="p-4" v-for="text in actionTexts">{{ text }}</p>
+      </div>
     </div>
   </div>
 </template>
@@ -116,6 +118,7 @@ export default {
       ws: null,
       players: [],
       cards: [],
+      actionTexts: []
     }
   },
   mounted() {
@@ -153,6 +156,21 @@ export default {
           break
         case "player-deal-hand":
           this.cards.push(data.action.target)
+          break
+        case "player-pick-card":
+          let currentCardValue = this.cards[this.cards.length - 1].slice(0, -1)
+          let target = data.action.target.slice(0, -1)
+          if (currentCardValue === target) {
+            this.actionTexts.unshift(data.action.origin + " picked the CORRECT card!")
+          } else {
+            this.actionTexts.unshift(data.action.origin + " picked the WRONG card, and must drink!")
+          }
+          break
+        case "player-attack":
+          this.actionTexts.unshift(data.action.origin + " attacks " + data.action.target + "!")
+          break
+        case "player-accept-attack":
+          this.actionTexts.unshift(data.action.origin + " chose to drink!")
           break
       }
     },

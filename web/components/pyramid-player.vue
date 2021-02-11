@@ -63,6 +63,7 @@
       </div>
     </div>
 
+    <!-- ATTACK OVERLAY -->
     <div class="overlay bg-white" v-for="(attacker, index) in attacks">
       <div class="flex flex-col text-center p-4">
         <p class="text-xl mb-8">You have been attacked by {{ attacker }}</p>
@@ -74,6 +75,19 @@
                 @click="demandShowCard(index)">
           Demand show card
         </button>
+      </div>
+    </div>
+
+    <!-- REJECTION OVERLAY -->
+    <div class="overlay bg-white" v-for="(rejection, rejectionIndex) in rejections">
+      <div class="flex flex-col text-center p-4">
+        <p class="flex-grow text-xl mb-8">{{ rejection }} doesn't believe you and wants you to show that you have the
+          card!<br><br>Please pick the card below</p>
+        <div class="flex">
+          <div class="flex-auto" v-for="(card, cardIndex) in cards">
+            <img :src="'/playing-cards/purple_back.png'" alt="card1" @click="showCard(rejectionIndex, cardIndex)">
+          </div>
+        </div>
       </div>
     </div>
 
@@ -118,8 +132,10 @@ export default {
       choosePlayerFunc: null,
       popupText: null,
       attacks: [],
+      rejections: [],
       attackedPlayers: [],
-      haveCardEnabled: false
+      haveCardEnabled: false,
+      cardsVisible: true
     }
   },
   methods: {
@@ -141,8 +157,8 @@ export default {
           this.cards.forEach(x => x.show = false)
           break
         case "player-deal-hand":
-          this.cards = data.action.target.split(",").map(x => {
-            return {card: x, show: true}
+          data.action.target.split(",").forEach((card, index) => {
+            this.cards[index].card = card
           })
           this.started = true
           break
@@ -155,6 +171,10 @@ export default {
         case "new-round":
           this.newRound()
           this.haveCardEnabled = true
+          this.cards.forEach(card => card.show = false)
+          break
+        case "player-reject-attack":
+          this.rejections.push(data.action.origin)
           break
       }
     },
@@ -206,9 +226,40 @@ export default {
         action: {action_type: "player-reject-attack", origin: this.name, target: this.attacks[index]}
       }))
       this.attacks.splice(index, 1)
+    },
+    showCard(rejectionIndex, cardIndex) {
+      let rank = this.cards[cardIndex].card.slice(0, -1)
+      let suit = ""
+      switch (this.cards[cardIndex].card.slice(-1)) {
+        case "H":
+          suit = "Hearts"
+          break
+        case "D":
+          suit = "Diamonds"
+          break
+        case "C":
+          suit = "Clubs"
+          break
+        case "S":
+          suit = "Spades"
+          break
+      }
+      alert("Chosen card was " + rank + " of " + suit)
+      this.rejections.splice(rejectionIndex, 1)
+      this.cards[cardIndex].show = true
+      this.ws.send(JSON.stringify({
+        room_id: this.code,
+        action: {action_type: "player-pick-card", origin: this.name, target: cardIndex.toString()}
+      }))
     }
   },
   mounted() {
+    this.cards = [
+      {card: "", show: true},
+      {card: "", show: true},
+      {card: "", show: true},
+      {card: "", show: true},
+    ]
     this.ws = new WebSocket("ws://" + location.hostname + ":8080/ws")
     this.ws.onopen = () => {
       this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "player-join", origin: this.name}}))

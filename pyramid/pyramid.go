@@ -112,9 +112,7 @@ func (p *Pyramid) play() {
 			log.Panic(err)
 		}
 		p.output(Action{ActionType: ActionNewRound})
-		//p.setAttackState(true)
 		p.waitForContinue()
-		//p.setAttackState(false)
 	}
 }
 
@@ -182,17 +180,15 @@ func (p *Pyramid) dealCards() {
 		})
 		var cardByte bytes.Buffer
 		for _, v := range p.Players[k].Hand {
-			cardByte.WriteString(v.Rank)
-			cardByte.WriteRune(v.Suit)
+			cardByte.WriteString(v.String())
 			cardByte.WriteString(",")
 		}
-		cardStr := cardByte.String()[:len(cardByte.String())-1]
+		cardStr := cardByte.String()
 		p.Players[k].Output <- Action{
 			ActionType: ActionDealHand,
 			Origin:     p.Players[k].Name,
-			Target:     cardStr,
+			Target:     cardStr[:len(cardStr)-1],
 		}
-
 	}
 }
 
@@ -247,11 +243,13 @@ func (p *Pyramid) attack(event Action) error {
 	})
 	p.updateAttackState()
 
-	p.Players[targetIdx].Output <- Action{
+	action := Action{
 		ActionType: ActionAttack,
 		Origin:     p.Players[originIdx].Name,
 		Target:     p.Players[targetIdx].Name,
 	}
+	p.Players[0].Output <- action
+	p.Players[targetIdx].Output <- action
 	return nil
 }
 
@@ -291,11 +289,14 @@ func (p *Pyramid) acceptAttack(event Action) error {
 	p.Attacks.Remove(Attack{Attacker: p.Players[targetIdx], Target: p.Players[originIdx]})
 	p.updateAttackState()
 
-	p.Players[targetIdx].Output <- Action{
+	action := Action{
 		ActionType: ActionAcceptAttack,
 		Origin:     p.Players[originIdx].Name,
 		Target:     p.Players[targetIdx].Name,
 	}
+
+	p.Players[0].Output <- action
+	p.Players[targetIdx].Output <- action
 	return nil
 }
 
@@ -311,7 +312,7 @@ func (p *Pyramid) pickCard(event Action) error {
 
 	handIdx, err := strconv.Atoi(event.Target)
 	if err != nil {
-		// This error handling is shit :P
+		log.Println("Error converting player pick card target to int:", err)
 		return err
 	}
 
@@ -326,7 +327,13 @@ func (p *Pyramid) pickCard(event Action) error {
 	}
 	newCard := card.Deal(&p.deck, 1)[0]
 	p.Players[originIdx].Hand[handIdx] = newCard
-	p.Players[originIdx].Output <- Action{ActionType: ActionDealHand, Target: newCard.String()}
+	var hand bytes.Buffer
+	for _, v := range p.Players[originIdx].Hand {
+		hand.WriteString(v.String())
+		hand.WriteString(",")
+	}
+	cardStr := hand.String()
+	p.Players[originIdx].Output <- Action{ActionType: ActionDealHand, Target: cardStr[:len(cardStr)-1]}
 	return nil
 }
 
