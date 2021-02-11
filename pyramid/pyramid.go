@@ -315,12 +315,14 @@ func (p *Pyramid) pickCard(event Action) error {
 		return err
 	}
 
-	chosenCard := p.Players[originIdx].Hand[handIdx].String()
+	chosenCard := p.Players[originIdx].Hand[handIdx]
+	p.deck = append(p.deck, chosenCard)
+	card.Shuffle(&p.deck)
 
 	p.Players[0].Output <- Action{
 		ActionType: ActionPickCard,
 		Origin:     p.Players[originIdx].Name,
-		Target:     chosenCard,
+		Target:     chosenCard.String(),
 	}
 	newCard := card.Deal(&p.deck, 1)[0]
 	p.Players[originIdx].Hand[handIdx] = newCard
