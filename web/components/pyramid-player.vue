@@ -158,6 +158,11 @@ export default {
           this.cards.forEach(x => x.show = false)
           break
         case "player-deal-hand":
+          if (this.cards.length === 0) {
+            for (let i = 0; i < 4; i++) {
+              this.cards.push({card: "purple_back", show: true})
+            }
+          }
           data.action.target.split(",").forEach((card, index) => {
             this.cards[index].card = card
           })
@@ -248,12 +253,6 @@ export default {
     }
   },
   mounted() {
-    this.cards = [
-      {card: "", show: true},
-      {card: "", show: true},
-      {card: "", show: true},
-      {card: "", show: true},
-    ]
     this.ws = new WebSocket("ws://" + location.hostname + ":8080/ws")
     this.ws.onopen = () => {
       this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "player-join", origin: this.name}}))
