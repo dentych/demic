@@ -274,11 +274,13 @@ func (p *Pyramid) rejectAttack(event Action) error {
 	p.Attacks.Remove(Attack{Attacker: p.Players[targetIdx], Target: p.Players[originIdx]})
 	p.updateAttackState()
 
-	p.Players[targetIdx].Output <- Action{
+	action := Action{
 		ActionType: ActionRejectAttack,
 		Origin:     p.Players[originIdx].Name,
 		Target:     p.Players[targetIdx].Name,
 	}
+	p.Players[0].Output <- action
+	p.Players[targetIdx].Output <- action
 	return nil
 }
 
@@ -443,8 +445,8 @@ func (p *Pyramid) showCard(event Action) error {
 	}
 	p.Players[0].Output <- Action{
 		ActionType: ActionShowCard,
-		Origin: event.Origin,
-		Target: player.Hand[cardIndex].String(),
+		Origin:     event.Origin,
+		Target:     player.Hand[cardIndex].String(),
 	}
 
 	return nil
