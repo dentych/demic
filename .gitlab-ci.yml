@@ -1,0 +1,45 @@
+stages:
+  - build
+
+services:
+  - docker:dind
+
+image: docker
+
+build backend:
+  stage: build
+  rules:
+    - if: "$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH"
+      when: on_success
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE:backend-$CI_COMMIT_SHORT_SHA" .
+
+build frontend:
+  stage: build
+  rules:
+    - if: "$CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH"
+      when: on_success
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE:web-$CI_COMMIT_SHORT_SHA" ./web
+
+build and push backend:
+  stage: build
+  rules:
+    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"
+      when: on_success
+  before_script:
+    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE:backend-$CI_COMMIT_SHORT_SHA" .
+    - docker push "$CI_REGISTRY_IMAGE:backend-$CI_COMMIT_SHORT_SHA"
+
+build and push frontend:
+  stage: build
+  rules:
+    - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"
+      when: on_success
+  before_script:
+    - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+  script:
+    - docker build -t "$CI_REGISTRY_IMAGE:web-$CI_COMMIT_SHORT_SHA" ./web
+    - docker push "$CI_REGISTRY_IMAGE:web-$CI_COMMIT_SHORT_SHA"
