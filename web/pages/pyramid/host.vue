@@ -133,7 +133,7 @@ export default {
   mounted() {
     this.ws = new WebSocket("ws://" + location.hostname + ":8080/ws")
     this.ws.onopen = () => {
-      this.ws.send(JSON.stringify({action: {action_type: "create-game"}}))
+      this.ws.send(JSON.stringify({action_type: "create-game", payload: {action_type: "create-game"}}))
     }
 
     this.ws.onmessage = this.messageHandler
@@ -146,47 +146,47 @@ export default {
     messageHandler(evt) {
       console.log(evt)
       let data = JSON.parse(evt.data)
-      switch (data.action.action_type) {
+      switch (data.payload.action_type) {
         case"create-game":
-          console.log("pyramid created with ID", data.action.target)
-          this.code = data.action.target
+          console.log("pyramid created with ID", data.payload.target)
+          this.code = data.payload.target
           break
         case"player-join":
-          if (data.action.target !== "HOST") {
-            this.actionTexts.unshift("Player '" + data.action.target + "' joined the game!")
-            this.players.push(data.action.target)
+          if (data.payload.target !== "HOST") {
+            this.actionTexts.unshift("Player '" + data.payload.target + "' joined the game!")
+            this.players.push(data.payload.target)
             console.log(this.players)
           }
           break
         case"player-quit":
-          this.actionTexts.unshift("Player '" + data.action.target + "' quit the game!")
-          let i = this.players.indexOf(data.action.target)
+          this.actionTexts.unshift("Player '" + data.payload.target + "' quit the game!")
+          let i = this.players.indexOf(data.payload.target)
           this.players.splice(i, 1)
           break
         case "player-deal-hand":
           this.actionTexts.unshift("New card turned. Players can attack!")
-          this.cards.push(data.action.target)
+          this.cards.push(data.payload.target)
           break
         case "player-pick-card":
           let currentCardValue = this.cards[this.cards.length - 1].slice(0, -1)
-          let target = data.action.target.slice(0, -1)
+          let target = data.payload.target.slice(0, -1)
           if (currentCardValue === target) {
-            this.actionTexts.unshift(data.action.origin + " picked the CORRECT card!")
+            this.actionTexts.unshift(data.payload.origin + " picked the CORRECT card!")
           } else {
-            this.actionTexts.unshift(data.action.origin + " picked the WRONG card, and must drink!")
+            this.actionTexts.unshift(data.payload.origin + " picked the WRONG card, and must drink!")
           }
           break
         case "player-attack":
-          this.actionTexts.unshift(data.action.origin + " attacks " + data.action.target + "!")
+          this.actionTexts.unshift(data.payload.origin + " attacks " + data.payload.target + "!")
           break
         case "player-accept-attack":
-          this.actionTexts.unshift(data.action.origin + " chose to drink!")
+          this.actionTexts.unshift(data.payload.origin + " chose to drink!")
           break
         case "player-reject-attack":
-          this.actionTexts.unshift(data.action.origin + " rejected the attack from " + data.action.target + ", who must now show the card!")
+          this.actionTexts.unshift(data.payload.origin + " rejected the attack from " + data.payload.target + ", who must now show the card!")
           break
         case "show-card":
-          this.actionTexts.unshift(data.action.origin + " shows card " + data.action.target.slice(0, -1))
+          this.actionTexts.unshift(data.payload.origin + " shows card " + data.payload.target.slice(0, -1))
           break
         case "game-end":
           this.actionTexts.unshift("No more cards to turn. All players will take turns calling out loud their cards and press them!")

@@ -142,17 +142,17 @@ export default {
   methods: {
     messageHandler(evt) {
       let data = JSON.parse(evt.data)
-      console.log(data.action)
-      switch (data.action.action_type) {
+      console.log(data.payload)
+      switch (data.payload.action_type) {
         case "player-join":
-          this.players.push(data.action.target)
+          this.players.push(data.payload.target)
           break
         case "player-quit":
-          let i = this.players.indexOf(data.action.target)
+          let i = this.players.indexOf(data.payload.target)
           this.players.splice(i, 1)
           break
         case "host":
-          this.host = data.action.target === this.name
+          this.host = data.payload.target === this.name
           break
         case "start-game":
           this.cards.forEach(x => x.show = false)
@@ -163,16 +163,16 @@ export default {
               this.cards.push({card: "purple_back", show: true})
             }
           }
-          data.action.target.split(",").forEach((card, index) => {
+          data.payload.target.split(",").forEach((card, index) => {
             this.cards[index].card = card
           })
           this.started = true
           break
         case "attack-state":
-          this.attackMode = data.action.target === "true"
+          this.attackMode = data.payload.target === "true"
           break
         case "player-attack":
-          this.attacks.push(data.action.origin)
+          this.attacks.push(data.payload.origin)
           break
         case "new-round":
           this.newRound()
@@ -181,7 +181,7 @@ export default {
           this.rounds++
           break
         case "player-reject-attack":
-          this.rejections.push(data.action.origin)
+          this.rejections.push(data.payload.origin)
           break
         case "game-end":
           this.gameEnd = true
@@ -193,10 +193,10 @@ export default {
       this.attackedPlayers = []
     },
     startGame() {
-      this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "start-game", origin: this.name}}))
+      this.ws.send(JSON.stringify({action_type: "start-game", payload: {action_type: "start-game", origin: this.name}}))
     },
     continueGame() {
-      this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "continue", origin: this.name}}))
+      this.ws.send(JSON.stringify({action_type: "continue", payload: {action_type: "continue", origin: this.name}}))
     },
     dialogChoosePlayer(name) {
       this.showDialogPlayerPicker = false
@@ -208,8 +208,8 @@ export default {
       this.choosePlayerFunc = name => {
         if (name) {
           this.ws.send(JSON.stringify({
-            room_id: this.code,
-            action: {action_type: "player-attack", origin: this.name, target: name}
+            action_type: "player-attack",
+            payload: {action_type: "player-attack", origin: this.name, target: name}
           }))
           this.attackedPlayers.push(name)
           this.popupText = "You attacked " + name
@@ -222,16 +222,16 @@ export default {
     },
     drink(index) {
       this.ws.send(JSON.stringify({
-        room_id: this.code,
-        action: {action_type: "player-accept-attack", origin: this.name, target: this.attacks[index]}
+        action_type: "player-accept-attack",
+        payload: {action_type: "player-accept-attack", origin: this.name, target: this.attacks[index]}
       }))
       this.attacks.splice(index, 1)
     },
     demandShowCard(index) {
       this.showDialogAttacked = false
       this.ws.send(JSON.stringify({
-        room_id: this.code,
-        action: {action_type: "player-reject-attack", origin: this.name, target: this.attacks[index]}
+        action_type: "player-reject-attack",
+        payload: {action_type: "player-reject-attack", origin: this.name, target: this.attacks[index]}
       }))
       this.attacks.splice(index, 1)
     },
@@ -239,23 +239,23 @@ export default {
       this.rejections.splice(rejectionIndex, 1)
       this.cards[cardIndex].show = true
       this.ws.send(JSON.stringify({
-        room_id: this.code,
-        action: {action_type: "player-pick-card", origin: this.name, target: cardIndex.toString()}
+        action_type: "player-pick-card",
+        payload: {action_type: "player-pick-card", origin: this.name, target: cardIndex.toString()}
       }))
     },
     turnCard(index) {
       if (!this.gameEnd) return
       this.cards[index].show = true
       this.ws.send(JSON.stringify({
-        room_id: this.code,
-        action: {action_type: "show-card", origin: this.name, target: index.toString()}
+        action_type: "show-card",
+        payload: {action_type: "show-card", origin: this.name, target: index.toString()}
       }))
     }
   },
   mounted() {
     this.ws = new WebSocket("ws://" + location.hostname + ":8080/ws")
     this.ws.onopen = () => {
-      this.ws.send(JSON.stringify({room_id: this.code, action: {action_type: "player-join", origin: this.name}}))
+      this.ws.send(JSON.stringify({action_type: "player-join", payload: {action_type: "player-join", origin: this.name, target: this.code}}))
     }
 
     this.ws.onmessage = this.messageHandler

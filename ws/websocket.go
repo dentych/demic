@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -10,8 +11,8 @@ import (
 )
 
 type Message struct {
-	RoomId string         `json:"room_id"`
-	Action pyramid.Action `json:"action"`
+	Action  string          `json:"action_type"`
+	Payload json.RawMessage `json:"payload"`
 }
 
 var upgrader websocket.Upgrader
@@ -59,15 +60,23 @@ func (c *Client) handleIncoming() {
 
 func (c *Client) handleOutgoing() {
 	for {
+
 		action := <-c.output
-		roomId := ""
-		if c.game != nil {
-			roomId = c.game.RoomId
-		}
-		err := c.conn.WriteJSON(Message{
-			RoomId: roomId,
-			Action: action,
+
+		myIn, err := json.Marshal(
+			&pyramid.Action{
+				ActionType: action.ActionType,
+				Origin:     action.Origin,
+				Target:     action.Target,
+			},
+		)
+		myInRaw := json.RawMessage(myIn)
+
+		err = c.conn.WriteJSON(Message{
+			Action:  action.ActionType,
+			Payload: myInRaw,
 		})
+
 		if err != nil {
 			log.Println("Error writing to websocket:", err)
 			var closeErr *websocket.CloseError
@@ -83,25 +92,29 @@ func (c *Client) handleOutgoing() {
 
 func (c *Client) handleIncomingMessage(msg *Message) error {
 	var err error
-	switch msg.Action.ActionType {
+
+	var payload pyramid.Action
+
+	err = json.Unmarshal(msg.Payload, &payload)
+	switch payload.ActionType {
 	case pyramid.ActionCreateGame:
-		err = c.createGame(msg)
+		err = c.createGame()
 	case pyramid.ActionPlayerJoin:
-		err = c.joinGame(msg)
+		err = c.joinGame(&payload)
 	default:
 		if c.game != nil {
-			c.game.Input <- msg.Action
+			c.game.Input <- payload
 		}
 	}
 	return err
 }
 
-func (c *Client) createGame(msg *Message) error {
+func (c *Client) createGame() error {
 	roomId := pyramid.GenerateId(4)
 	game := pyramid.NewPyramidGame()
 	_, ok := pyramid.Rooms[roomId]
 	if ok {
-		return fmt.Errorf("tried to create pyramid game with existing ID: %s", msg.RoomId)
+		return fmt.Errorf("tried to create pyramid game with existing ID: %s", roomId)
 	} else {
 		pyramid.Rooms[roomId] = game
 		c.game = game
@@ -113,18 +126,18 @@ func (c *Client) createGame(msg *Message) error {
 	return nil
 }
 
-func (c *Client) joinGame(msg *Message) error {
+func (c *Client) joinGame(action *pyramid.Action) error {
 	if c.game == nil {
 		var ok bool
-		c.game, ok = pyramid.Rooms[msg.RoomId]
+		c.game, ok = pyramid.Rooms[action.Target]
 		if !ok {
-			return fmt.Errorf("player tried to join game with ID %s, which was not found", msg.RoomId)
+			return fmt.Errorf("player tried to join game with ID %s, which was not found", action.Target)
 		}
 	}
 	if len(c.game.Players) > 6 {
-		return fmt.Errorf("player tried to join game with ID %s, room is full", msg.RoomId)
+		return fmt.Errorf("player tried to join game with ID %s, room is full", action.Target)
 	}
-	c.player = &pyramid.Player{Name: msg.Action.Origin, Output: c.output}
+	c.player = &pyramid.Player{Name: action.Origin, Output: c.output}
 	c.game.PlayerJoin <- c.player
 	return nil
 }

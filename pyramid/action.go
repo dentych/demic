@@ -13,7 +13,6 @@ const (
 	ActionAttackState  = "attack-state"
 	ActionContinue     = "continue"
 	ActionHost         = "host"
-	ActionNewCard      = "new-card"
 	ActionNewRound     = "new-round"
 	ActionGameEnd      = "game-end"
 	ActionShowCard     = "show-card"

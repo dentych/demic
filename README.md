@@ -17,8 +17,8 @@ sequenceDiagram
 
   F->>B: Connect WebSocket
   activate B
-  F->>B: msg: Hello backend
-  B-->>F: msg: Hello frontend
+  F->>B: action: Hello backend
+  B-->>F: action: Hello frontend
   deactivate B
 ```
 

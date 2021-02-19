@@ -389,8 +389,8 @@ func (p *Pyramid) inputHandler() {
 			p.rejectAttack(event)
 		case ActionPickCard:
 			p.pickCard(event)
-		case ActionNewCard:
-			p.newCard(event)
+		//case ActionNewCard:
+		//	p.newCard(event)
 		case ActionContinue:
 			p.continueGame()
 		case ActionShowCard:
