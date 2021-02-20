@@ -14,5 +14,8 @@ export default {
     buildModules: [
         "@nuxtjs/tailwindcss",
         "@nuxtjs/pwa",
-    ]
+    ],
+    env: {
+        apiBaseUrl: process.env.API_BASE_URL || "localhost:8080"
+    }
 }

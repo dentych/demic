@@ -131,25 +131,37 @@ export default {
     }
   },
   mounted() {
-    this.ws = new WebSocket("ws://" + location.hostname + ":8080/ws")
+    let baseUrl = process.env.apiBaseUrl
+    this.ws = new WebSocket("ws://" + baseUrl + "/ws")
     this.ws.onopen = () => {
-      this.ws.send(JSON.stringify({action_type: "create-game", payload: {action_type: "create-game"}}))
+      this.ws.send(JSON.stringify({action_type: "hello", payload: {action_type: "hello", client_id: localStorage.getItem("clientID")}}))
     }
 
-    this.ws.onmessage = this.messageHandler
+    this.ws.onmessage = (msg) => {
+      let parsed = JSON.parse(msg.data)
+      if (parsed.action_type !== "hello") {
+        alert("There was an error connecting to the game")
+        this.ws.onmessage = null
+        return
+      }
+      localStorage.setItem("clientID", parsed.payload.client_id)
+      this.ws.onmessage = this.messageHandler
+      this.ws.send(JSON.stringify({action_type: "create-game", payload: {game: "pyramid"}}))
+    }
 
     this.ws.onerror = err => {
       console.log(err)
+      alert("There was an error with the connection!")
     }
   },
   methods: {
     messageHandler(evt) {
       console.log(evt)
       let data = JSON.parse(evt.data)
-      switch (data.payload.action_type) {
-        case"create-game":
-          console.log("pyramid created with ID", data.payload.target)
-          this.code = data.payload.target
+      switch (data.action_type) {
+        case"game-created":
+          console.log("pyramid created with ID", data.payload.room_id)
+          this.code = data.payload.room_id
           break
         case"player-join":
           if (data.payload.target !== "HOST") {

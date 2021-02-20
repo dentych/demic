@@ -9,7 +9,7 @@
     "start": "nuxt start"
   },
   "dependencies": {
-    "nuxt": "^2.14.12"
+    "nuxt": "^2.15.1"
   },
   "devDependencies": {
     "@nuxtjs/pwa": "^3.3.5",

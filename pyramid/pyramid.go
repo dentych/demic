@@ -2,8 +2,10 @@ package pyramid
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"gitlab.com/dentych/demic/card"
+	"gitlab.com/dentych/demic/models"
 	"log"
 	"sort"
 	"strconv"
@@ -21,9 +23,7 @@ var (
 var Rooms map[string]*Pyramid
 
 type Pyramid struct {
-	Input       chan Action  `json:"-"`
-	PlayerJoin  chan *Player `json:"-"`
-	PlayerLeave chan *Player `json:"-"`
+	Input chan models.IncomingMessage `json:"-"`
 
 	RoomId         string   `json:"room_id"`
 	Started        bool     `json:"started"`
@@ -41,7 +41,7 @@ func init() {
 	Rooms = make(map[string]*Pyramid)
 }
 
-func NewPyramidGame() *Pyramid {
+func Create(clientID string) (roomID string, input chan<- models.IncomingMessage, output <-chan models.OutgoingMessage, err error) {
 	p := Pyramid{}
 	p.RoomId = GenerateId(4)
 	p.Players = make([]Player, 0)
@@ -49,40 +49,47 @@ func NewPyramidGame() *Pyramid {
 	p.boardCardIndex = 0
 	p.attackState = false
 
-	p.Input = make(chan Action, 25)
-	p.PlayerJoin = make(chan *Player)
-	p.PlayerLeave = make(chan *Player)
+	p.Input = make(chan models.IncomingMessage, 25)
+
+	player := NewPlayer(clientID, "HOST")
+	p.Players = append(p.Players, *player)
 
 	go p.play()
 	go p.inputHandler()
-	go p.playerJoinHandler()
-	go p.playerLeaveHandler()
 
-	return &p
+	return p.RoomId, p.Input, player.Output, nil
 }
 
-func (p *Pyramid) addPlayer(player *Player) error {
-	if p.Started {
-		return ErrGameStarted
+func Join(roomID, clientID, playerName string) (chan<- models.IncomingMessage, <-chan models.OutgoingMessage, error) {
+	room, ok := Rooms[roomID]
+	if !ok {
+		return nil, nil, fmt.Errorf("room with ID '%s' not found", roomID)
 	}
 
-	for _, v := range p.Players {
-		if player.Name == v.Name {
-			return ErrPlayerNameExists
+	player, err := room.joinPlayer(clientID, playerName)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return room.Input, player.Output, nil
+}
+
+func (p *Pyramid) joinPlayer(clientID, playerName string) (player Player, err error) {
+	for index := range p.Players {
+		if clientID == p.Players[index].ClientID {
+			p.Players[index] = *NewPlayer(clientID, playerName)
+			player = p.Players[index]
+			return
 		}
 	}
 
-	for _, v := range p.Players {
-		if v.Name != "HOST" {
-			player.Output <- Action{ActionType: ActionPlayerJoin, Target: v.Name}
-		}
-	}
-	p.Players = append(p.Players, *player)
-	p.output(Action{
+	player = *NewPlayer(clientID, playerName)
+	p.Players = append(p.Players, player)
+	p.output(PayloadAction{
 		ActionType: ActionPlayerJoin,
 		Target:     player.Name,
 	})
-	return nil
+	return
 }
 
 func (p *Pyramid) removePlayer(player *Player) error {
@@ -90,7 +97,7 @@ func (p *Pyramid) removePlayer(player *Player) error {
 		if player.Name == p.Players[i].Name {
 			p.Players[len(p.Players)-1], p.Players[i] = p.Players[i], p.Players[len(p.Players)-1]
 			p.Players = p.Players[:len(p.Players)-1]
-			p.output(Action{ActionType: ActionPlayerQuit, Target: player.Name})
+			p.output(PayloadAction{ActionType: ActionPlayerQuit, Target: player.Name})
 			return nil
 		}
 	}
@@ -104,7 +111,7 @@ func (p *Pyramid) play() {
 	}
 	p.dealCards()
 	p.waitForContinue()
-	p.output(Action{ActionType: ActionStartGame})
+	p.output(PayloadAction{ActionType: ActionStartGame})
 
 	// main loop
 	for p.boardCardIndex != len(p.board) {
@@ -112,13 +119,13 @@ func (p *Pyramid) play() {
 		if err != nil {
 			log.Panic(err)
 		}
-		p.output(Action{ActionType: ActionNewRound})
+		p.output(PayloadAction{ActionType: ActionNewRound})
 		p.waitForContinue()
 	}
 
 	// Game end
 	p.gameEnd = true
-	p.output(Action{ActionType: ActionGameEnd})
+	p.output(PayloadAction{ActionType: ActionGameEnd})
 
 	select {}
 }
@@ -134,21 +141,29 @@ func (p *Pyramid) updateAttackState() {
 		return
 	}
 
-	p.Players[1].Output <- Action{
-		ActionType: ActionAttackState,
-		Origin:     p.Players[0].Name,
-		Target:     strconv.FormatBool(p.attackState),
-	}
+	p.Players[1].Output <- actionToOutgoing(PayloadAction{
+			ActionType: ActionAttackState,
+			Origin:     p.Players[0].Name,
+			Target:     strconv.FormatBool(p.attackState),
+	})
 
+}
+
+func actionToOutgoing(action PayloadAction) models.OutgoingMessage {
+	return models.OutgoingMessage{
+		ActionType: action.ActionType,
+		Payload:    action,
+	}
 }
 
 func (p *Pyramid) continueGame() {
 	p.cont = true
 }
 
-func (p *Pyramid) output(action Action) {
+func (p *Pyramid) output(action PayloadAction) {
+	outgoingMessage := actionToOutgoing(action)
 	for _, player := range p.Players {
-		player.Output <- action
+		player.Output <- outgoingMessage
 	}
 }
 
@@ -191,11 +206,11 @@ func (p *Pyramid) dealCards() {
 			cardByte.WriteString(",")
 		}
 		cardStr := cardByte.String()
-		p.Players[k].Output <- Action{
+		p.Players[k].Output <- actionToOutgoing(PayloadAction{
 			ActionType: ActionDealHand,
 			Origin:     p.Players[k].Name,
 			Target:     cardStr[:len(cardStr)-1],
-		}
+		})
 	}
 }
 
@@ -215,11 +230,11 @@ func (p *Pyramid) turnNextCard() error {
 	cardByte.WriteRune(c.Suit)
 	cardStr := cardByte.String()
 
-	p.Players[0].Output <- Action{
+	p.Players[0].Output <- actionToOutgoing(PayloadAction{
 		ActionType: ActionDealHand,
 		Origin:     p.Players[0].Name,
 		Target:     cardStr,
-	}
+	})
 	return nil
 }
 
@@ -233,7 +248,7 @@ func (p *Pyramid) waitForContinue() {
 	}
 }
 
-func (p *Pyramid) attack(event Action) error {
+func (p *Pyramid) attack(event PayloadAction) error {
 	var originIdx, targetIdx int
 	for k, player := range p.Players {
 		switch player.Name {
@@ -250,17 +265,17 @@ func (p *Pyramid) attack(event Action) error {
 	})
 	p.updateAttackState()
 
-	action := Action{
+	msg := actionToOutgoing(PayloadAction{
 		ActionType: ActionAttack,
 		Origin:     p.Players[originIdx].Name,
 		Target:     p.Players[targetIdx].Name,
-	}
-	p.Players[0].Output <- action
-	p.Players[targetIdx].Output <- action
+	})
+	p.Players[0].Output <- msg
+	p.Players[targetIdx].Output <- msg
 	return nil
 }
 
-func (p *Pyramid) rejectAttack(event Action) error {
+func (p *Pyramid) rejectAttack(event PayloadAction) error {
 	var originIdx, targetIdx int
 	for k, player := range p.Players {
 		switch player.Name {
@@ -274,17 +289,17 @@ func (p *Pyramid) rejectAttack(event Action) error {
 	p.Attacks.Remove(Attack{Attacker: p.Players[targetIdx], Target: p.Players[originIdx]})
 	p.updateAttackState()
 
-	action := Action{
+	msg := actionToOutgoing(PayloadAction{
 		ActionType: ActionRejectAttack,
 		Origin:     p.Players[originIdx].Name,
 		Target:     p.Players[targetIdx].Name,
-	}
-	p.Players[0].Output <- action
-	p.Players[targetIdx].Output <- action
+	})
+	p.Players[0].Output <- msg
+	p.Players[targetIdx].Output <- msg
 	return nil
 }
 
-func (p *Pyramid) acceptAttack(event Action) error {
+func (p *Pyramid) acceptAttack(event PayloadAction) error {
 	var originIdx, targetIdx int
 	for k, player := range p.Players {
 		switch player.Name {
@@ -298,18 +313,18 @@ func (p *Pyramid) acceptAttack(event Action) error {
 	p.Attacks.Remove(Attack{Attacker: p.Players[targetIdx], Target: p.Players[originIdx]})
 	p.updateAttackState()
 
-	action := Action{
+	msg := actionToOutgoing(PayloadAction{
 		ActionType: ActionAcceptAttack,
 		Origin:     p.Players[originIdx].Name,
 		Target:     p.Players[targetIdx].Name,
-	}
+	})
 
-	p.Players[0].Output <- action
-	p.Players[targetIdx].Output <- action
+	p.Players[0].Output <- msg
+	p.Players[targetIdx].Output <- msg
 	return nil
 }
 
-func (p *Pyramid) pickCard(event Action) error {
+func (p *Pyramid) pickCard(event PayloadAction) error {
 	var originIdx int
 
 	for k, player := range p.Players {
@@ -329,11 +344,11 @@ func (p *Pyramid) pickCard(event Action) error {
 	p.deck = append(p.deck, chosenCard)
 	card.Shuffle(&p.deck)
 
-	p.Players[0].Output <- Action{
+	p.Players[0].Output <- actionToOutgoing(PayloadAction{
 		ActionType: ActionPickCard,
 		Origin:     p.Players[originIdx].Name,
 		Target:     chosenCard.String(),
-	}
+	})
 	newCard := card.Deal(&p.deck, 1)[0]
 	p.Players[originIdx].Hand[handIdx] = newCard
 	var hand bytes.Buffer
@@ -342,11 +357,14 @@ func (p *Pyramid) pickCard(event Action) error {
 		hand.WriteString(",")
 	}
 	cardStr := hand.String()
-	p.Players[originIdx].Output <- Action{ActionType: ActionDealHand, Target: cardStr[:len(cardStr)-1]}
+	p.Players[originIdx].Output <- actionToOutgoing(PayloadAction{
+		ActionType: ActionDealHand,
+		Target: cardStr[:len(cardStr)-1],
+	})
 	return nil
 }
 
-func (p *Pyramid) newCard(event Action) {
+func (p *Pyramid) newCard(event PayloadAction) {
 	var originIdx, handIdx int
 	var cardByte bytes.Buffer
 	for k, player := range p.Players {
@@ -368,65 +386,45 @@ func (p *Pyramid) newCard(event Action) {
 
 	cardStr := cardByte.String()[:len(cardByte.String())-1]
 
-	p.Players[originIdx].Output <- Action{
+	p.Players[originIdx].Output <- actionToOutgoing(PayloadAction{
 		ActionType: ActionDealHand,
 		Origin:     p.Players[originIdx].Name,
 		Target:     cardStr,
-	}
+	})
 }
 
 func (p *Pyramid) inputHandler() {
+	var err error
 	for {
 		event := <-p.Input
+		var payload PayloadAction
+		err = json.Unmarshal(event.Payload, &payload)
+		if err != nil {
+			log.Println("failed to unmarshal payload in inputhandler:", err)
+			return
+		}
 		switch event.ActionType {
 		case ActionStartGame:
 			p.Started = true
 		case ActionAttack:
-			p.attack(event)
+			p.attack(payload)
 		case ActionAcceptAttack:
-			p.acceptAttack(event)
+			p.acceptAttack(payload)
 		case ActionRejectAttack:
-			p.rejectAttack(event)
+			p.rejectAttack(payload)
 		case ActionPickCard:
-			p.pickCard(event)
+			p.pickCard(payload)
 		//case ActionNewCard:
 		//	p.newCard(event)
 		case ActionContinue:
 			p.continueGame()
 		case ActionShowCard:
-			p.showCard(event)
+			p.showCard(payload)
 		}
 	}
 }
 
-func (p *Pyramid) playerJoinHandler() {
-	for {
-		pl := <-p.PlayerJoin
-		err := p.addPlayer(pl)
-		if err != nil {
-			log.Println("Failed to add player "+pl.Name, err)
-		}
-		if len(p.Players) > 1 {
-			pl.Output <- Action{
-				ActionType: ActionHost,
-				Origin:     "",
-				Target:     p.Players[1].Name,
-			}
-		}
-	}
-}
-
-func (p *Pyramid) playerLeaveHandler() {
-	for {
-		pl := <-p.PlayerLeave
-		err := p.removePlayer(pl)
-		if err != nil {
-			log.Println("Failed to remove player: "+pl.Name, err)
-		}
-	}
-}
-
-func (p *Pyramid) showCard(event Action) error {
+func (p *Pyramid) showCard(event PayloadAction) error {
 	if !p.gameEnd {
 		return fmt.Errorf("game not ended yet")
 	}
@@ -443,11 +441,11 @@ func (p *Pyramid) showCard(event Action) error {
 	if err != nil {
 		return err
 	}
-	p.Players[0].Output <- Action{
+	p.Players[0].Output <- actionToOutgoing(PayloadAction{
 		ActionType: ActionShowCard,
 		Origin:     event.Origin,
 		Target:     player.Hand[cardIndex].String(),
-	}
+	})
 
 	return nil
 }

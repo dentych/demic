@@ -1,7 +1,6 @@
 package pyramid
 
 const (
-	ActionCreateGame   = "create-game"
 	ActionPlayerJoin   = "player-join"
 	ActionStartGame    = "start-game"
 	ActionDealHand     = "player-deal-hand"
@@ -18,10 +17,10 @@ const (
 	ActionShowCard     = "show-card"
 )
 
-// Action struct that is used to send/receive messages to/from clients.
+// PayloadAction struct that is used to send/receive messages to/from clients.
 //
 // Types of actions: attack, accept attack, reject attack, next card gets turned, attack mode start, attack mode end.
-type Action struct {
+type PayloadAction struct {
 	ActionType string `json:"action_type"`
 	Origin     string `json:"origin"`
 	Target     string `json:"target"`
