@@ -29,9 +29,10 @@ type PayloadGameCreated struct {
 	RoomID string `json:"room_id"`
 }
 
-type PayloadJoin struct {
-	Game   string `json:"game"`
-	RoomID string `json:"room_id"`
+type PayloadJoinGame struct {
+	Game       string `json:"game"`
+	RoomID     string `json:"room_id"`
+	PlayerName string `json:"player_name"`
 }
 
 type PayloadHello struct {

@@ -1,7 +1,7 @@
 package pyramid
 
 const (
-	ActionPlayerJoin   = "player-join"
+	ActionPlayerJoined = "player-joined"
 	ActionStartGame    = "start-game"
 	ActionDealHand     = "player-deal-hand"
 	ActionPlayerQuit   = "player-quit"

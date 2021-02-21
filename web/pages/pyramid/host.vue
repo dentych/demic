@@ -28,7 +28,7 @@
       <div class="flex justify-center">
         <div class="h-full">
           <img :src="'/playing-cards/' + cards[14] + '.png'" class="h-full" v-if="cards[14]">
-          <img v-else src="/playing-cards/purple_back.png" class="h-full">
+          <img v-else src="/playing-cards/purple_back.png" class="h-full" draggable="true">
         </div>
       </div>
 
@@ -131,8 +131,9 @@ export default {
     }
   },
   mounted() {
-    let baseUrl = process.env.apiBaseUrl
-    this.ws = new WebSocket("ws://" + baseUrl + "/ws")
+    let apiBaseUrl = process.env.apiBaseUrl
+    let websocketUrl = apiBaseUrl.replace("http", "ws")
+    this.ws = new WebSocket(websocketUrl + "/ws")
     this.ws.onopen = () => {
       this.ws.send(JSON.stringify({action_type: "hello", payload: {action_type: "hello", client_id: localStorage.getItem("clientID")}}))
     }
@@ -163,7 +164,7 @@ export default {
           console.log("pyramid created with ID", data.payload.room_id)
           this.code = data.payload.room_id
           break
-        case"player-join":
+        case"player-joined":
           if (data.payload.target !== "HOST") {
             this.actionTexts.unshift("Player '" + data.payload.target + "' joined the game!")
             this.players.push(data.payload.target)

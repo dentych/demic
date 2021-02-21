@@ -143,8 +143,15 @@ export default {
     messageHandler(evt) {
       let data = JSON.parse(evt.data)
       console.log(data.payload)
-      switch (data.payload.action_type) {
-        case "player-join":
+      switch (data.action_type) {
+        case "hello":
+          localStorage.setItem("clientID", data.payload.client_id)
+          this.ws.send(JSON.stringify({
+            action_type: "join-game",
+            payload: {game: "pyramid", room_id: this.code, player_name: this.name}
+          }))
+          break
+        case "player-joined":
           this.players.push(data.payload.target)
           break
         case "player-quit":
@@ -253,9 +260,14 @@ export default {
     }
   },
   mounted() {
-    this.ws = new WebSocket("ws://" + location.hostname + ":8080/ws")
+    let apiBaseUrl = process.env.apiBaseUrl
+    let websocketUrl = apiBaseUrl.replace("http", "ws")
+    this.ws = new WebSocket(websocketUrl + "/ws")
     this.ws.onopen = () => {
-      this.ws.send(JSON.stringify({action_type: "player-join", payload: {action_type: "player-join", origin: this.name, target: this.code}}))
+      this.ws.send(JSON.stringify({
+        action_type: "hello",
+        payload: {client_id: localStorage.getItem("clientID")}
+      }))
     }
 
     this.ws.onmessage = this.messageHandler

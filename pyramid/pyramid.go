@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gitlab.com/dentych/demic/card"
 	"gitlab.com/dentych/demic/models"
+	"gitlab.com/dentych/demic/util"
 	"log"
 	"sort"
 	"strconv"
@@ -54,6 +55,8 @@ func Create(clientID string) (roomID string, input chan<- models.IncomingMessage
 	player := NewPlayer(clientID, "HOST")
 	p.Players = append(p.Players, *player)
 
+	Rooms[p.RoomId] = &p
+
 	go p.play()
 	go p.inputHandler()
 
@@ -86,7 +89,7 @@ func (p *Pyramid) joinPlayer(clientID, playerName string) (player Player, err er
 	player = *NewPlayer(clientID, playerName)
 	p.Players = append(p.Players, player)
 	p.output(PayloadAction{
-		ActionType: ActionPlayerJoin,
+		ActionType: ActionPlayerJoined,
 		Target:     player.Name,
 	})
 	return
@@ -160,9 +163,12 @@ func (p *Pyramid) continueGame() {
 	p.cont = true
 }
 
-func (p *Pyramid) output(action PayloadAction) {
+func (p *Pyramid) output(action PayloadAction, excluded ...string) {
 	outgoingMessage := actionToOutgoing(action)
 	for _, player := range p.Players {
+		if util.ArrayContains(excluded, player.Name) {
+			continue
+		}
 		player.Output <- outgoingMessage
 	}
 }

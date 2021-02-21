@@ -60,11 +60,8 @@ func (c *Client) handleIncoming() {
 }
 
 func (c *Client) handleOutgoing() {
-	for action := range c.output {
-		err := c.conn.WriteJSON(models.OutgoingMessage{
-			ActionType: action.ActionType,
-			Payload:    action,
-		})
+	for msg := range c.output {
+		err := c.conn.WriteJSON(msg)
 		if err != nil {
 			log.Println("Error writing to websocket:", err)
 			var closeErr *websocket.CloseError
@@ -97,8 +94,13 @@ func (c *Client) createGame(payload models.PayloadCreateGame) error {
 	return err
 }
 
-func (c *Client) joinGame(payload models.PayloadJoin) error {
-	// TODO
+func (c *Client) joinGame(payload models.PayloadJoinGame) error {
+	var err error
+	c.input, c.output, err = pyramid.Join(payload.RoomID, c.clientID, payload.PlayerName)
+		if err != nil {
+		return fmt.Errorf("error joining room with room ID '%s': %w", payload.RoomID, err)
+	}
+
 	return nil
 }
 
@@ -109,7 +111,7 @@ func (c *Client) joinGame(payload models.PayloadJoin) error {
 //
 // Creating a game is achieved by sending a message with a PayloadCreateGame payload.
 //
-// Joining a game is achieved by sending a message with a PayloadJoin payload.
+// Joining a game is achieved by sending a message with a PayloadJoinGame payload.
 func (c *Client) hello() error {
 	var msg models.IncomingMessage
 
@@ -155,7 +157,7 @@ func (c *Client) hello() error {
 		}
 		return c.createGame(payload)
 	case models.ActionJoinGame:
-		var payload models.PayloadJoin
+		var payload models.PayloadJoinGame
 		err = json.Unmarshal(msg.Payload, &payload)
 		if err != nil {
 			log.Println("create game payload unmarshalling error:", err)
