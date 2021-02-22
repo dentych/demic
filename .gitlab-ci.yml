@@ -39,7 +39,7 @@ build and push frontend:
     - if: "$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH"
       when: on_success
   variables:
-    API_BASE_URL: demic-api.tychsen.me
+    API_BASE_URL: https://demic-api.tychsen.me
   before_script:
     - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
   script:
