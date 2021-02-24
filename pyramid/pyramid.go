@@ -88,6 +88,12 @@ func (p *Pyramid) joinPlayer(clientID, playerName string) (player Player, err er
 
 	player = *NewPlayer(clientID, playerName)
 	p.Players = append(p.Players, player)
+	if len(p.Players) > 1 {
+		player.Output <- actionToOutgoing(PayloadAction{
+			ActionType: ActionHost,
+			Target:     p.Players[1].Name,
+		})
+	}
 	p.output(PayloadAction{
 		ActionType: ActionPlayerJoined,
 		Target:     player.Name,
@@ -145,9 +151,9 @@ func (p *Pyramid) updateAttackState() {
 	}
 
 	p.Players[1].Output <- actionToOutgoing(PayloadAction{
-			ActionType: ActionAttackState,
-			Origin:     p.Players[0].Name,
-			Target:     strconv.FormatBool(p.attackState),
+		ActionType: ActionAttackState,
+		Origin:     p.Players[0].Name,
+		Target:     strconv.FormatBool(p.attackState),
 	})
 
 }
@@ -365,7 +371,7 @@ func (p *Pyramid) pickCard(event PayloadAction) error {
 	cardStr := hand.String()
 	p.Players[originIdx].Output <- actionToOutgoing(PayloadAction{
 		ActionType: ActionDealHand,
-		Target: cardStr[:len(cardStr)-1],
+		Target:     cardStr[:len(cardStr)-1],
 	})
 	return nil
 }
