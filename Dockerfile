@@ -2,7 +2,6 @@
 FROM golang:alpine AS build
 WORKDIR /app
 COPY . .
-ARG API_BASE_URL
 RUN go build -o demic main.go
 
 # App

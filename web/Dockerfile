@@ -1,8 +1,8 @@
 FROM node:alpine
 
 WORKDIR /app
-
 ARG API_BASE_URL
+RUN echo $API_BASE_URL
 
 COPY package.json ./
 RUN yarn
